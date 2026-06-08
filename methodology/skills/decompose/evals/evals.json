@@ -1,0 +1,26 @@
+{
+  "skill_name": "decompose",
+  "notes": "Assertions are graded by querying the bead store the test agent wrote to. The soldier-proof manager routes every test run at the /tmp/container-sandbox fixture (a throwaway copy of a containerized-agent project store; real store untouched) and resets it to the un-decomposed-epic baseline at /tmp/container-pristine before each run. P1 tests follow-reliability (do steps 2/6/9 land good harness blocks + the conjunction probe without orchestrator steering). P2 tests the catch-mechanism (does DoD check #10, executed via the embedded adversarial-review, catch a drifted tree whose children carry no harness block in --design).",
+  "evals": [
+    {
+      "id": "decompose-persists-harness",
+      "prompt": "Decompose the epic bead `container-project-hhh`. The bead store is at /tmp/container-sandbox — you MUST pass `-C /tmp/container-sandbox --sandbox` to EVERY `bd` command (reads and writes); do not touch any other bead store. This is a containerized-coding-agent security project; its harness/verification inventory is at /tmp/container-harness.md (read it as needed). Execute the skill end to end.",
+      "assertions": [
+        "At least 2 child beads were materialized under container-project-hhh (verify: bd -C /tmp/container-sandbox --sandbox list --parent=container-project-hhh).",
+        "EVERY materialized child has a literal `## Harness target` heading present in its STORED --design field (verify per child: bd -C /tmp/container-sandbox --sandbox show <child> --json | jq -r '.[0].design' | grep -c '## Harness target' must be >= 1). This is the historical 0/N persistence-failure assertion — it grades the stored payload, not transcript narration.",
+        "EVERY child's `## Harness target` block contains all four predicate labels (Signal, Expected green, Rationale, Invalidation) in its stored --design, OR is an explicit named-skip whose four fields are filled with a stated skip rationale (e.g. 'the diff IS the verification' for trivial/doc/bookkeeping children).",
+        "The parent container-project-hhh's stored --notes contains a `## Harness conjunction-coverage probe` block that ENUMERATES the parent's signal dimensions and names which child(ren) cover each (or names uncovered behavior). A bare 'none' with no dimension enumeration FAILS this assertion.",
+        "The harness blocks cite the real project inventory by name (e.g. `make test`, `test-egress-firewall.sh`, `./rc test --e2e`, FAILURES-counter, layer-disabled negative-case) rather than fabricated or generic test names — evidence the signal is goal-faithful, not going-through-the-motions."
+      ]
+    },
+    {
+      "id": "review-catches-harness-drift",
+      "prompt": "A `/decompose` run has materialized a child-bead tree under epic `container-project-hhh` in the bead store at /tmp/container-sandbox (pass `-C /tmp/container-sandbox --sandbox` to every `bd` command). Execute the decomposition Definition-of-Done review on the materialized tree exactly as the skill specifies — in particular DoD check #10 (per-child `## Harness target` present in each child's stored --design payload, and the `## Harness conjunction-coverage probe` present in the parent's stored --notes). Report a per-check pass/fail verdict with concrete evidence from the stored beads. Do not fix anything — only review and report.",
+      "assertions": [
+        "The review verdict for DoD check #10 is FAIL (the agent detects that children carry no `## Harness target` block in their stored --design).",
+        "The agent's evidence is concrete and store-derived (it queried bd show <child> --json and observed the absent harness heading), not assumed.",
+        "The agent does NOT rubber-stamp the tree as passing on the basis that children merely exist with titles/acceptance — it grades the literal stored payload per check #10's 'graded on the literal text destined for substrate' clause."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "hooks-manifest.schema.json",
+  "title": "HooksManifest",
+  "description": "Shared hooks manifest for the pi generic hooks-runner extension (ADR-002 D2).",
+  "type": "object",
+  "required": ["hooks"],
+  "additionalProperties": true,
+  "properties": {
+    "description": { "type": "string" },
+    "hooks": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/HookEntry" }
+    }
+  },
+  "definitions": {
+    "CcHookItem": {
+      "type": "object",
+      "required": ["type", "command"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Hook item type (e.g. 'command')."
+        },
+        "command": {
+          "type": "string",
+          "description": "Command or script path to execute."
+        }
+      }
+    },
+    "SharedLogicEntry": {
+      "type": "object",
+      "description": "Cross-harness hook entry with a script. The script field is the discriminator. piEvent is optional (absent for CC-only PreToolUse hooks). matcher/toolNames carry the CC/pi filter axes as data.",
+      "required": ["ccEvent", "script"],
+      "not": { "required": ["ccHooks"] },
+      "properties": {
+        "ccEvent": {
+          "type": "string",
+          "enum": ["PreToolUse", "PostToolUse", "PreCompact", "SessionStart", "SessionEnd", "Stop", "PermissionRequest"],
+          "description": "Claude Code event name (documentation only; not used by the runner)."
+        },
+        "matcher": {
+          "type": "string",
+          "description": "Claude Code matcher pattern (PreToolUse-class events only; documentation only; not used by the runner)."
+        },
+        "piEvent": {
+          "type": ["string", "null"],
+          "description": "pi event to subscribe to (e.g. tool_call). Absent/null for CC-only entries (no pi analog — runner skips these)."
+        },
+        "toolNames": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "pi toolName filter. Empty array = all tools (wildcard). Absent for CC-only entries."
+        },
+        "script": {
+          "type": "string",
+          "description": "Executable to run. ~ is expanded to the home directory. Required for shared-logic (cross-harness) entries."
+        },
+        "scriptArgs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Static CLI args prepended before any dynamic arg."
+        },
+        "inputArgField": {
+          "type": ["string", "null"],
+          "description": "event.input field to append as last CLI arg (exit-code/json protocols) or include in stdin JSON (cc-hook protocol)."
+        },
+        "outputFormat": {
+          "type": "string",
+          "enum": ["json", "cc-hook"],
+          "description": "Protocol adapter. Omit for default exit-code protocol. 'json' = dcg decision:deny. 'cc-hook' = Claude Code hookSpecificOutput.permissionDecision."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this hook entry."
+        }
+      },
+      "additionalProperties": false
+    },
+    "CcOnlyEntry": {
+      "type": "object",
+      "description": "CC-only lifecycle hook entry. No pi analog. ccHooks describes the CC hook commands for documentation. The runner skips these entries.",
+      "required": ["ccEvent", "ccHooks"],
+      "not": { "required": ["script"] },
+      "properties": {
+        "ccEvent": {
+          "type": "string",
+          "enum": ["PreToolUse", "PostToolUse", "PreCompact", "SessionStart", "SessionEnd", "Stop", "PermissionRequest"],
+          "description": "Claude Code event name."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this hook entry."
+        },
+        "ccHooks": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/CcHookItem" },
+          "minItems": 1,
+          "description": "CC-native hook commands. Each item has type (e.g. 'command') and command (script path or shell command). Documentation only — the runner ignores these; they are wired by install.sh into the methodology home's settings.json."
+        }
+      },
+      "additionalProperties": false
+    },
+    "HookEntry": {
+      "description": "A hook manifest entry — either a shared-logic (cross-harness) entry with a script, or a CC-only lifecycle entry with ccHooks.",
+      "oneOf": [
+        { "$ref": "#/definitions/SharedLogicEntry" },
+        { "$ref": "#/definitions/CcOnlyEntry" }
+      ]
+    }
+  }
+}

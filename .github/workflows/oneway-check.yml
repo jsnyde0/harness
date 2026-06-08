@@ -1,0 +1,19 @@
+name: one-way-leak check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  oneway-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Scan core assets for private markers
+        run: uv run scripts/oneway-check.py
+
+      - name: Run oneway-check self-test
+        run: uv run scripts/test_oneway_check.py

@@ -1,0 +1,3 @@
+# Harness
+
+Harness is the public-core agentic-engineering substrate: a curated set of workflow methodology skills, hook scripts, subagent roles, and ADRs that install cleanly into Claude Code, pi, and Codex via `./install.sh`. It combines the cross-harness mechanism (role-loader, hook-runner, compile/install) with the methodology layer (workflow primitives, memory-layer architecture, loop composability), creating a shared foundation that any agent harness can consume without needing to re-implement the core discipline from scratch. Full clone-and-adapt instructions and a LICENSE are deferred to a later bead.

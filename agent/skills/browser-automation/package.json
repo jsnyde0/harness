@@ -1,0 +1,10 @@
+{
+  "name": "browser-automation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "CLI scripts to drive Chrome over CDP for Claude Code",
+  "dependencies": {
+    "puppeteer-core": "^23.0.0"
+  }
+}

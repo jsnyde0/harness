@@ -1,0 +1,50 @@
+{
+  "skill_name": "compound",
+  "description": "Trigger-recognition test set. Each prompt scenario-shapes the agent into one of the four named Common mis-skips; PASS requires the agent to (a) name /compound as the immediate next action, (b) cite the relevant mis-skip clause by number, (c) explicitly reject the failure-mode rationalization for that scenario.",
+  "evals": [
+    {
+      "id": "p1-bd-epic-gating",
+      "targets_branch": "B8 (mis-skip #1) + B2 (substantial-artifact)",
+      "prompt": "You are an engineer working in a Django project. You just: (1) authored a new ADR-008 at `docs/decisions/ADR-008-code-posture-refactor-hard-fail-loud.md` with 4 sub-decisions on code posture (refactor-hard until V1 / no speculative abstraction / fail-loud on data integrity / retry-then-fail-loud on transport); (2) edited CLAUDE.md to reference it; (3) committed both files; (4) pushed to origin/main. NO bd epic backs this work — the ADR was authored directly without a bd-issue parent. The user just asked: \"committed?\"\n\nArticulate clearly:\n1. What is your immediate next action?\n2. Why? (Reference the skill explicitly — quote the relevant clause if your action is informed by it.)\n3. If you considered other actions and rejected them, what were they and why did you reject them?\n\nDo NOT actually execute multi-step work or dispatch subagents — describe your intended action only.",
+      "assertions": [
+        "Names /compound as the immediate next action (before answering 'committed?' with a wrap-up).",
+        "Cites Common mis-skips #1 (bd-epic gating) by number or verbatim text.",
+        "Cites at least one of: 'Substantial-artifact unit shipped' or 'Wrap-up imminent' judgment-routed trigger.",
+        "Explicitly rejects 'skip because no bd epic' as a wrong action."
+      ]
+    },
+    {
+      "id": "p2-pre-decided-l2b-shortcut",
+      "targets_branch": "B9 (mis-skip #2)",
+      "prompt": "You are an engineer who just finished a small task. You have one bd remember entry you want to write to anchor future sessions to the ADR you just authored:\n\n```\nbd remember --key=adr-008-code-posture \"ADR-008 (FIRM until V1): refactor hard, no backward-compat, fail-loud on data integrity, retry-then-fail-loud on transport. Check before refactor or review work.\"\n```\n\nShould you just write the bd remember directly, or is there something to do first?\n\nArticulate clearly:\n1. What is your immediate next action?\n2. Why? (Reference the skill explicitly — quote the relevant clause if your action is informed by it.)\n3. If you considered other actions and rejected them, what were they and why did you reject them?\n\nDo NOT actually execute multi-step work or dispatch subagents — describe your intended action only.",
+      "assertions": [
+        "Names /compound as the immediate next action (before writing the bd remember).",
+        "Cites Common mis-skips #2 (pre-decided L2B shortcut) by number or verbatim text.",
+        "Articulates that the pre-known entry is only the Record→L2B slice, not the whole compounding surface.",
+        "Explicitly rejects 'just write the bd remember directly' as a wrong action."
+      ]
+    },
+    {
+      "id": "p3-empty-substrate-misread",
+      "targets_branch": "B10 (mis-skip #3) + B4 (user trigger phrase)",
+      "prompt": "You are an engineer in a workspace where:\n- `cm playbook` returns: 1 candidate bullet, score 0 (essentially empty)\n- `bd memories` returns 2 entries (both project-state pointers)\n- You just authored and committed a substantial ADR + CLAUDE.md change on the same topic (cross-cutting code posture rules)\n\nThe user just said: \"nice, we're done here.\"\n\nArticulate clearly:\n1. What is your immediate next action?\n2. Why? (Reference the skill explicitly — quote the relevant clause if your action is informed by it.)\n3. If you considered other actions and rejected them, what were they and why did you reject them?\n\nDo NOT actually execute multi-step work or dispatch subagents — describe your intended action only.",
+      "assertions": [
+        "Names /compound as the immediate next action (before any wrap-up reply to the user).",
+        "Cites Common mis-skips #3 (empty-CASSMS misread) by number or verbatim text.",
+        "Cites the user trigger phrase 'we're done' from the judgment-routed list.",
+        "Explicitly rejects 'skip because CASSMS is empty' as a wrong action."
+      ]
+    },
+    {
+      "id": "p4-end-of-turn-absorption",
+      "targets_branch": "B11 (mis-skip #4) — literal real-session failure case",
+      "prompt": "You are an engineer mid-stream writing a wrap-up message to the user after a productive session. You're about to type out:\n\n```\nStatus:\n- ADR-008 + CLAUDE.md committed and pushed as one commit\n- Did NOT run bd dolt push since no bd mutations happened\n- Suggested follow-ups: (1) audit V0 code for silent fallbacks; (2) bd remember the ADR-008 anchor\n\nOn (2) if you still want it: want me to drop a bd remember pointer? Otherwise we're done here.\n```\n\nYou haven't sent the message yet.\n\nArticulate clearly:\n1. What is your immediate next action?\n2. Why? (Reference the skill explicitly — quote the relevant clause if your action is informed by it.)\n3. If you considered other actions and rejected them, what were they and why did you reject them?\n\nDo NOT actually execute multi-step work or dispatch subagents — describe your intended action only.",
+      "assertions": [
+        "Names /compound as the immediate next action (holding the drafted message; NOT sending first).",
+        "Cites Common mis-skips #4 (end-of-turn absorption) by number or verbatim text.",
+        "Articulates that writing the summary first absorbs synthesis into the originating session's context.",
+        "Explicitly rejects 'send the message first, fire /compound after' as a wrong action."
+      ]
+    }
+  ]
+}

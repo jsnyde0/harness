@@ -1,0 +1,48 @@
+{
+  "skill_name": "recall",
+  "evals": [
+    {
+      "id": "bead-id-pickup",
+      "prompt": "Let's pick this up — I want to start on the scope-check primitive design bead. Run /recall before I claim it.",
+      "rationale": "Tests bead-id input, default-on trigger #1 (picking up new bead), phrase trigger 'let's pick this up', broad multi-tier surface (L3/L2B/L2A/skills), L1 skip-default, brain-run discipline. Particularly probes content-extractor delegation on large `bd show` persisted-output and load-bearing-surprise prelude when the bead turns out to be closed.",
+      "assertions": [
+        "Agent invokes `bd show` on the scope-check primitive design bead (or equivalent) to frame the query",
+        "Agent dispatches `content-extractor` (NOT raw `Read`) on any `bd show` persisted-output file >10KB",
+        "Agent queries L2B via `bd memories` with relevant keywords",
+        "Agent queries L2A via `cm context`",
+        "Agent surfaces a `Load-bearing surprise` prelude when the bead is closed (state mismatch with user framing)",
+        "Agent does NOT invoke `cass` (L1 skipped by default — no retro/audit phrase trigger present)",
+        "Agent reads cited ADR-Dk sections before applying firmness labels (no reasoned-from-context [FIRM] labels)",
+        "Output contains the 5 canonical sections (FIRM constraints / Relevant prior context / Skills in scope / Verification needed / Empty signals)"
+      ]
+    },
+    {
+      "id": "free-text-pre-brainstorm",
+      "prompt": "Where were we on the memory-layer architecture? I want to brainstorm an extension to L2A retention policies. Run /recall before /brainstorm.",
+      "rationale": "Tests free-text input (no bead-id), scope-shift trigger, pre-brainstorm default-on trigger, phrase trigger 'where were we'. Validates that volume-delegation rules don't spuriously fire when reads stay under threshold. Validates firmness-verification rule against ADR-013 (which has mixed firmness: D1/D3 FIRM, D2/D4 FLEXIBLE, D8 EXPLORATORY).",
+      "assertions": [
+        "Agent frames query as 'L2A retention policy extension' (or equivalent topic-anchored framing)",
+        "Agent reads ADR-013 directly (not via subagent) and labels firmness correctly: D1 FIRM, D2 FLEXIBLE, D3 FIRM, D4 FLEXIBLE, D8 EXPLORATORY",
+        "Agent queries L2B via `bd memories memory-layer` (or L2A retention keywords)",
+        "Agent queries L2A via `cm context`",
+        "Agent does NOT dispatch file-scanner or content-extractor (volume threshold not crossed)",
+        "Agent does NOT invoke `cass` (no retro/audit trigger)",
+        "Agent surfaces `/brainstorm`, `/adr-write`, and `/compound` in Skills in scope (composition handoffs)",
+        "Output contains all 5 canonical sections with non-empty Empty signals (probing for absences)"
+      ]
+    },
+    {
+      "id": "explicit-retro-audit",
+      "prompt": "Remind me what we decided about haiku-tier subagent model selection — I want to audit our reasoning before scaling it to other agents.",
+      "rationale": "Tests L1 explicit-retro invoke branch — textbook trigger combining literal phrase 'remind me what we decided about' (from skill's phrase-triggers list) with 'audit' semantic. Iter 3 of initial soldier-proof run MISSED this trigger; skill text was strengthened post-loop. This eval validates the fix.",
+      "assertions": [
+        "Agent invokes `cass search` (or `cass view`) on relevant topic keywords — L1 explicitly engaged per retro/audit trigger",
+        "Agent recognizes `cm context` (L2A) is NOT a substitute for `cass` (L1) — both are queried where relevant",
+        "Agent surfaces a CASS-derived reasoning trail (prior session excerpts) in the orientation block, not just current-state artifacts",
+        "Agent's absences probe correctly identifies whether the decision is canonicalized at L3 (ADR) or only at lower tiers",
+        "Agent reads agent frontmatter files directly when citing specific tier assignments",
+        "Output contains all 5 canonical sections; FIRM constraints may be empty if no ADR encodes the decision"
+      ]
+    }
+  ]
+}

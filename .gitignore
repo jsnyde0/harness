@@ -1,0 +1,13 @@
+node_modules/
+__pycache__/
+.venv/
+*.bak
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+
+# Local (author-specific) markers config for oneway-check — never commit
+scripts/oneway-markers.local.toml

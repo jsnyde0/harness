@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# pre-push hook — one-way-leak enforcement
+#
+# Blocks any push that would introduce private markers into core assets.
+# Runs two checks:
+#   1. oneway-check.py  — scans core assets for private-marker classes C1-C4
+#   2. test_oneway_check.py — self-test to ensure the engine itself is intact
+#
+# Both must pass (exit 0) for the push to proceed.
+#
+# To activate on a fresh clone, run once:
+#   git config core.hooksPath .githooks
+#
+# See CONTRIBUTING.md for details.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+echo "--- pre-push: one-way-leak check ---"
+
+uv run --directory "$REPO_ROOT" scripts/oneway-check.py
+ONEWAY_EXIT=$?
+
+if [ "$ONEWAY_EXIT" -ne 0 ]; then
+  echo ""
+  echo "BLOCKED: one-way-check found private markers in core assets."
+  echo "Fix the leaks listed above before pushing."
+  exit 1
+fi
+
+echo ""
+echo "--- pre-push: oneway-check self-test ---"
+
+uv run --directory "$REPO_ROOT" scripts/test_oneway_check.py
+SELFTEST_EXIT=$?
+
+if [ "$SELFTEST_EXIT" -ne 0 ]; then
+  echo ""
+  echo "BLOCKED: oneway-check self-test failed — the engine may be broken or weakened."
+  echo "Repair test_oneway_check.py / oneway-check.py before pushing."
+  exit 1
+fi
+
+echo ""
+echo "--- pre-push: all checks green — push allowed ---"
+exit 0

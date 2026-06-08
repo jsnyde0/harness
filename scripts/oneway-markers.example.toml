@@ -1,0 +1,47 @@
+# oneway-markers.example.toml
+#
+# TEMPLATE for one-way-check marker configuration.
+# Copy this file to oneway-markers.local.toml and fill in your real private tokens.
+# The local file is gitignored — it stays on disk but is never committed.
+#
+# This template ships in the public repo with GENERIC placeholder values only.
+# A fresh clone (CI, collaborator) runs against these placeholders — which will
+# not match anything in the repo — and exits green.
+#
+# SCHEMA:
+# -------
+# private_path_token  (string)       — C1: path fragment for your private overlay repo
+# work_org_tokens     (list[string]) — C3: work-org names / work GitHub account handles
+# private_bead_prefixes (list[string]) — C4: bead-namespace prefixes you want to guard
+# private_project_nouns (list[string]) — C5: private repo/project names
+# private_source_paths  (list[string]) — C5: partial paths to private source trees
+#
+# NOTE: the two structural classes — C2 (literal methodology-home config paths)
+# and C6 (absolute macOS home-path shapes) — are hardcoded in the engine and do
+# NOT live here. They carry no author identity, so they need no per-user config.
+
+# C1 — private overlay repo path token.
+# The engine fires when this token appears anywhere in a tracked file's content.
+# Example: if your private repo is named "my-private-overlay", put that here.
+private_path_token = "your-private-repo"
+
+# C3 — work-org tokens (GitHub org, directory name, handle).
+# List every spelling that should not appear in public core files.
+# Example: your employer's org name and your work GitHub username.
+work_org_tokens = ["your-work-org", "your-work-github-handle"]
+
+# C4 — private bead-namespace prefixes.
+# The engine fires on <prefix>-<base36id> tokens (e.g. myproj-abc1, myproj-3bq).
+# List the short namespace prefixes you use for private projects.
+# Note: "claude" is a common bead namespace — include it here if you use it.
+private_bead_prefixes = ["myproj"]
+
+# C5 — private project/repo proper nouns.
+# These are repo names or project names that must not appear in public core files.
+private_project_nouns = ["my-private-project", "another-private-app"]
+
+# C5 — private source-tree path fragments.
+# Partial paths that, if found in a tracked file, indicate a private-source leak.
+# The engine fires when any of these strings appear in file content.
+# Note: "code/personal/harness" is always allowed (it IS the public core).
+private_source_paths = ["code/personal/my-private-repo"]

@@ -1,0 +1,87 @@
+{
+  "$schema": "./hooks-manifest.schema.json",
+  "description": "Shared hooks manifest mirroring the methodology home's settings.json hooks table. Carries matcher axis as data for cross-harness wiring (ADR-002 D2). The piEvent+toolNames fields are the pi-native translation of CC's event+matcher; no per-matcher code in the runner.",
+  "hooks": [
+    {
+      "ccEvent": "PreToolUse",
+      "matcher": "Bash",
+      "piEvent": "tool_call",
+      "toolNames": ["bash"],
+      "script": "dcg",
+      "scriptArgs": ["test", "--format", "json"],
+      "inputArgField": "command",
+      "outputFormat": "json",
+      "description": "DCG (destructive-command-guard): blocks denied bash commands via dcg binary."
+    },
+    {
+      "ccEvent": "PreToolUse",
+      "matcher": "Bash",
+      "piEvent": "tool_call",
+      "toolNames": ["bash"],
+      "script": "$CLAUDE_HOME/hooks/block-compound-commands.sh",
+      "scriptArgs": [],
+      "inputArgField": null,
+      "outputFormat": "cc-hook",
+      "description": "Block compound commands (&&, ;, ||) on pi bash tool calls."
+    },
+    {
+      "ccEvent": "PreToolUse",
+      "matcher": "Bash",
+      "piEvent": "tool_call",
+      "toolNames": ["bash"],
+      "script": "$CLAUDE_HOME/hooks/block-sensitive-bash.sh",
+      "scriptArgs": [],
+      "inputArgField": null,
+      "outputFormat": "cc-hook",
+      "description": "Block sensitive bash commands on pi bash tool calls."
+    },
+    {
+      "ccEvent": "PreToolUse",
+      "matcher": "Read|Edit|Write",
+      "piEvent": "tool_call",
+      "toolNames": ["read", "edit", "write"],
+      "script": "$CLAUDE_HOME/hooks/restrict-sensitive-paths.sh",
+      "scriptArgs": [],
+      "inputArgField": null,
+      "outputFormat": "cc-hook",
+      "description": "Restrict access to sensitive file paths on pi read/edit/write tool calls."
+    },
+    {
+      "ccEvent": "PreCompact",
+      "description": "CC lifecycle: re-prime the bead substrate context before compaction (bd prime). No pi analog — CC-only.",
+      "ccHooks": [
+        { "type": "command", "command": "bd prime" }
+      ]
+    },
+    {
+      "ccEvent": "SessionStart",
+      "description": "CC lifecycle: sync memory in, prime bead+cm context, run brain-of-loop on session start. No pi analog — CC-only.",
+      "ccHooks": [
+        { "type": "command", "command": "$CLAUDE_HOME/hooks/sync-memory-in.sh" },
+        { "type": "command", "command": "$CLAUDE_HOME/hooks/bd-prime-with-cm.sh" },
+        { "type": "command", "command": "$CLAUDE_HOME/hooks/brain-of-loop.sh" }
+      ]
+    },
+    {
+      "ccEvent": "SessionEnd",
+      "description": "CC lifecycle: sync memory out on session end. No pi analog — CC-only.",
+      "ccHooks": [
+        { "type": "command", "command": "$CLAUDE_HOME/hooks/sync-memory-out.sh" }
+      ]
+    },
+    {
+      "ccEvent": "Stop",
+      "description": "CC lifecycle: notify on stop. No pi analog — CC-only.",
+      "ccHooks": [
+        { "type": "command", "command": "$CLAUDE_HOME/hooks/notify.sh" }
+      ]
+    },
+    {
+      "ccEvent": "PermissionRequest",
+      "description": "CC lifecycle: notify on permission request. No pi analog — CC-only.",
+      "ccHooks": [
+        { "type": "command", "command": "$CLAUDE_HOME/hooks/notify.sh" }
+      ]
+    }
+  ]
+}

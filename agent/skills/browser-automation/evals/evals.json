@@ -1,0 +1,139 @@
+{
+  "skill_name": "browser-automation",
+  "evals": [
+    {
+      "id": "hn-top-5-extraction",
+      "prompt": "Use the browser-automation skill to open news.ycombinator.com and return the titles + URLs of the top 5 stories as structured data.",
+      "rationale": "Happy-path: start, nav, eval with array-of-objects extraction — the canonical composition pattern at SKILL.md §Composition patterns.",
+      "assertions": [
+        "Agent called start.js, nav.js, and eval.js in that order",
+        "Agent used a single-expression eval (no IIFE needed for pure extraction)",
+        "Output contains exactly 5 stories, each with a title and URL"
+      ]
+    },
+    {
+      "id": "example-com-screenshot-describe",
+      "prompt": "Open https://example.com using the browser-automation skill, take a screenshot of the page, and describe what it shows.",
+      "rationale": "Exercises the screenshot branch and the Read-on-temp-path workflow (SKILL.md §screenshot).",
+      "assertions": [
+        "Agent called screenshot.js and then Read on the printed temp file path",
+        "Description mentions the 'Example Domain' heading and the IANA documentation language",
+        "No extra eval calls — screenshot + Read is sufficient"
+      ]
+    },
+    {
+      "id": "ddg-search-first-result",
+      "prompt": "Use browser-automation to go to duckduckgo.com, search for 'puppeteer-core', and report the title + URL of the first organic result.",
+      "rationale": "Designed to force the multi-statement eval gotcha (SKILL.md §Gotcha). Agent should either pre-apply the IIFE pattern or fail-then-recover after reading the gotcha note.",
+      "assertions": [
+        "Agent used an IIFE pattern (either pre-emptively or after a failed statement-list attempt)",
+        "If the agent failed first, the recovery was one-shot (single retry using the documented IIFE example)",
+        "Output identifies puppeteer-core npm package as first organic result"
+      ]
+    },
+    {
+      "id": "multi-tab-hn-lobsters",
+      "prompt": "Use browser-automation to open both https://news.ycombinator.com AND https://lobste.rs in SEPARATE tabs. Then report the title of the top story on each site. Make sure both tabs remain open at the end.",
+      "rationale": "Multi-tab workflow — exercises --new for creation and --url= for addressing. Originally surfaced the .at(-1) defect that led to the --url= flag.",
+      "assertions": [
+        "Agent used --new for BOTH tabs (not nav without --new for one of them)",
+        "Agent used --url= to address tabs by URL (not relying on default .at(-1))",
+        "Final tab state contains both news.ycombinator.com AND lobste.rs (verified via /json/list or equivalent)",
+        "Agent did NOT write a custom puppeteer script as a workaround — the skill's primitives sufficed"
+      ]
+    },
+    {
+      "id": "routing-static-README",
+      "prompt": "Fetch the README at https://raw.githubusercontent.com/anthropics/anthropic-sdk-python/main/README.md and tell me what installation command the project recommends. This is a plain-text URL — no JavaScript rendering involved. You have other tools available too (e.g., WebFetch). Use whichever is most appropriate. Explain briefly why you chose what you chose.",
+      "rationale": "Routing decision probe: does the skill's 'Don't use for: one-off static-HTML fetches (use WebFetch)' guidance correctly steer the agent away from browser-automation?",
+      "assertions": [
+        "Agent did NOT invoke any browser-automation script (no start.js, nav.js, eval.js, screenshot.js, pick.js calls)",
+        "Agent chose WebFetch and explained the reasoning, citing the static/no-JS nature of the URL",
+        "Output correctly identifies 'pip install anthropic' (or equivalent) as the recommended install command"
+      ]
+    },
+    {
+      "id": "pick-hn-title-selector",
+      "prompt": "We want a stable CSS selector for the top-story TITLE on Hacker News. The user is at the keyboard and will click the element when prompted. Use the pick.js tool to ask them to click the top story title on news.ycombinator.com, then report back the selector info you got.",
+      "rationale": "Human-in-loop pick.js workflow. Only valid when invoked from the top-level conversation, NOT from a subagent (per SKILL.md caveat).",
+      "skip_in_subagent": true,
+      "assertions": [
+        "Invoked only from top-level conversation, not a subagent (subagent invocation would hang)",
+        "Chrome on :9222 was running and on news.ycombinator.com before pick.js was called",
+        "pick.js was invoked with an instructive label string",
+        "Output contains the element's tag, text content, and a parent-chain selector"
+      ]
+    },
+    {
+      "id": "profile-github-signin-check",
+      "prompt": "The user wants to verify their Chrome profile sync is working. Use the browser-automation skill with --profile to launch a fresh Chrome instance seeded with their profile, navigate to https://github.com, and report which GitHub username appears to be signed in.",
+      "rationale": "--profile path. Requires user's normal Chrome to be quit AND no existing :9222 instance.",
+      "preconditions": [
+        "User's Google Chrome process is fully quit (pgrep -x 'Google Chrome' returns nothing)",
+        "No dedicated Chrome on :9222 (run: pkill -f 'remote-debugging-port=9222')"
+      ],
+      "assertions": [
+        "Agent ran start.js --profile and got '✓ Chrome started on :9222 with your profile' (not 'reusing')",
+        "Agent navigated to github.com",
+        "Agent inspected sign-in state via eval.js (e.g., meta[name=user-login], avatar aria-label, or similar)",
+        "Output reports either a username or 'not signed in' with reasoning"
+      ]
+    },
+    {
+      "id": "multi-tab-labels-wait",
+      "prompt": "Use the browser-automation skill to open https://news.ycombinator.com and https://lobste.rs in two separate tabs, labeled `hn` and `lob` respectively. Then, working ONLY via the labels (do NOT use `--url=`), wait until each site's story list is rendered (HN: `.athing` rows; Lobsters: `.story` rows), then return the text of the top story title on each site as structured data: `{ hn: \"...\", lob: \"...\" }`.",
+      "rationale": "Canonical --label multi-tab composition (SKILL.md §Stable tab handles with --label). Tests label create + reuse across nav/eval/wait, persistence via tab-labels.json sidecar.",
+      "assertions": [
+        "Agent used --new --label= for BOTH tabs (open-and-label in one step)",
+        "All subsequent tool calls (wait, eval) used --label= for targeting; no --url= used",
+        "Final output is structured { hn, lob } with actual story titles",
+        "Agent did NOT write a custom puppeteer script — the skill's primitives sufficed"
+      ]
+    },
+    {
+      "id": "wait-for-redirect-url",
+      "prompt": "Use browser-automation to do the following: (1) Open a NEW tab labeled `redir` that navigates to https://httpbin.org/redirect-to?url=https%3A%2F%2Fexample.com&status_code=302. (2) Use the wait primitive to BLOCK on that specific tab until its URL contains the substring `example.com`. Use a 10-second timeout. (3) After the wait succeeds, eval `document.title` and `location.href` on the same tab. (4) Report the final URL, the document.title, and how long the wait took. If the wait times out, report the exit code and the URL at the time of timeout — do NOT recover with a workaround.",
+      "rationale": "Forces the trickiest divergence in the new wait.js: --url= here is a CONDITION, not tab targeting (that's --label=). Tests whether a fresh-injection agent groks the SKILL.md 'Note: in wait.js only, --url= is a condition' callout.",
+      "assertions": [
+        "Agent used --label=redir for tab targeting AND --url=example.com for the wait condition in the SAME wait.js invocation (not confused into using one or the other)",
+        "Wait exit code was 0 (or 2 with explanation if forced to time out — the test prompt expects success)",
+        "Final URL reported is https://example.com/ (or close variant)",
+        "document.title reported as 'Example Domain'"
+      ]
+    },
+    {
+      "id": "wait-fn-then-screenshot",
+      "prompt": "Use browser-automation: (1) Open https://example.com in a NEW tab labeled `ex`. (2) Use the `wait` primitive with the `--fn` condition to block until BOTH `document.readyState === 'complete'` AND the page text contains 'Example Domain'. Combine them into a SINGLE JavaScript expression for `--fn`. (3) Take a screenshot of the labeled `ex` tab specifically. (4) Read the screenshot file and verify it shows Example Domain. (5) Report the screenshot file path, confirmation, and the exact --fn expression used.",
+      "rationale": "Tests wait --fn single-expression discipline (combine via && without IIFE) and screenshot --label combination. Validates the SKILL.md 'same single-expression rule as eval.js' wording.",
+      "assertions": [
+        "Agent used a single JavaScript expression for --fn (typically combined with &&), NOT an IIFE — because the conjunction of two expressions is still a single expression",
+        "screenshot.js was invoked with --label=ex (not relying on last-tab default)",
+        "Agent used the Read tool on the printed screenshot path",
+        "Output describes 'Example Domain' content from the rendered screenshot"
+      ]
+    },
+    {
+      "id": "wait-forced-timeout",
+      "prompt": "Use the browser-automation skill to deliberately force a wait.js timeout. (1) Open https://example.com in a new tab labeled `to`. (2) Run wait.js targeting that tab with `--text='ThisStringDefinitelyNotOnExampleDotCom'` and `--timeout=2000`. (3) Capture stdout, stderr, and exit code. (4) Report the exit code, the elapsed time wait.js itself reported (its own output, not wall clock), and the full stderr text. Do NOT retry or recover — surface the failure exactly as the skill produced it.",
+      "rationale": "Validates wait.js's documented exit code 2 on timeout, and that the stderr 'Timeout after Nms waiting for condition' message is produced cleanly. This is the exit-2 code path that other prompts can't trigger if the condition resolves quickly.",
+      "assertions": [
+        "Exit code is exactly 2",
+        "Elapsed time reported by wait.js itself is within ~10% of the requested timeout (e.g., 2000-2200ms for --timeout=2000)",
+        "Stderr contains '✗ Timeout after' and 'waiting for condition'",
+        "Agent did NOT retry, recover, or attempt to change the condition — surfaced the failure as-is"
+      ]
+    },
+    {
+      "id": "missing-label-error-ux",
+      "prompt": "Use the browser-automation skill to probe its error-UX when a label is unknown. (1) Ensure start.js has been run (idempotent). (2) Try to eval `document.title` on a tab labeled `does-not-exist-xyz-12345` (a label that has never been set). (3) Capture stdout, stderr, and exit code. (4) Report: the exit code, the full error output, whether the message lists known labels, whether it tells you how to create a new label, whether it lists open tabs, and your judgment of helpfulness. Do NOT retry or attempt to create the label — observe the error as a first-time user would.",
+      "rationale": "Probes the helpful-diagnostic branch of pickTab() in _tabs.js. Confirms that label miss → exit 1 with a recovery-actionable error message (known labels, creation syntax, open tabs).",
+      "assertions": [
+        "Exit code is exactly 1 (usage/targeting error)",
+        "Error output contains '✗ No tab matches --label='",
+        "Error output lists known labels (if any exist) — when registered labels are present, they should be enumerated",
+        "Error output tells the user how to create a label ('nav.js <url> --new --label=<name>') — this hint should be present REGARDLESS of whether labels currently exist",
+        "Error output lists open tabs so the user can fall back to --url= targeting if needed"
+      ]
+    }
+  ]
+}

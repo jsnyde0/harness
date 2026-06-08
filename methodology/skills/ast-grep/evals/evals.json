@@ -1,0 +1,38 @@
+{
+  "skill_name": "ast-grep",
+  "evals": [
+    {
+      "id": "P1-python-print-in-except",
+      "prompt": "In the Python project at $PROJECT_ROOT, find every `print()` call that appears inside an `except` block (i.e., anywhere in the body of an except clause, however deeply nested). Report file paths and line numbers. Use ast-grep — that is the skill you have been given. Do not fall back to ripgrep or hand-written Python AST scripts unless ast-grep genuinely cannot express this query and you can demonstrate why.",
+      "expected_output": "Four matches: chat/llm.py:143, chat/models.py:44, chat/models.py:56, chat/models.py:74. (Exact match counts depend on the target project state.)",
+      "assertions": [
+        "Agent uses ast-grep (not ripgrep, not Python ast module) as the primary tool.",
+        "Agent uses the `inside: kind: except_clause` shape (or equivalent parent-via-has shape), NOT a bare `except` pattern at the top level.",
+        "Agent reports exactly the 4 known matches without false positives from finally/else blocks.",
+        "If agent attempted a top-level `except` pattern, the recovery references the 'Child-only node gotcha' section in the skill."
+      ]
+    },
+    {
+      "id": "P2-ts-async-arrow-no-await",
+      "prompt": "In the TypeScript monorepo at $PROJECT_ROOT, find async arrow functions whose body contains no `await` expression. (An arrow function declared `async` but that never uses `await` inside its body is the target.) Use ast-grep — do not fall back to ripgrep or hand-written AST scripts unless ast-grep genuinely cannot express this query. Report a count of matches and the first 5 file paths.",
+      "expected_output": "Count in the low hundreds (workspace state dependent); first 5 files should be from packages/agent/.",
+      "assertions": [
+        "Agent uses `kind: arrow_function` to anchor the rule (discovered via `--debug-query=ast` or the playground).",
+        "Composite rule uses Form A (separate `all:` list items) or Form B (top-of-rule matcher + `all:` sibling) — NOT the broken form (kind + has as siblings inside one `all:` item).",
+        "Agent acknowledges the `stopBy: end` scope-blindness limitation in the output (nested async functions cross the subtree-await check).",
+        "Agent tests the rule against a synthetic fixture before scanning the monorepo."
+      ]
+    },
+    {
+      "id": "P3-python-logger-info-pattern",
+      "prompt": "In the Python project at $PROJECT_ROOT, find every call to `logger.info(...)` whose first argument is a literal string (a string literal — not a variable, not an f-string formed from one, not a function call result). Use a simple `--pattern` (not a YAML rule file) since this is a single-node structural match. Report file:line for each match.",
+      "expected_output": "Zero matches (the project does not use logger.info).",
+      "assertions": [
+        "Agent uses `ast-grep run --pattern` (not `scan --rule`).",
+        "Agent correctly handles shell `$` escaping for the metavariable in the pattern.",
+        "Agent does NOT spin trying to make the pattern work — empty result is correctly diagnosed as 'no matches in repo' rather than 'pattern bug'.",
+        "Agent uses `$$$ARGS` or equivalent zero-or-more metavariable when broadening the search to verify the empty result."
+      ]
+    }
+  ]
+}
