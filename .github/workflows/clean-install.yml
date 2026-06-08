@@ -1,0 +1,44 @@
+name: clean-install integration proof
+
+# W4 Distribution epic — integration test.
+# Proves: on a machine with NONE of beads/CASSMS preinstalled,
+# clone harness → install (provision + wire) → doctor green →
+# reference role 'implementer' round-trips structurally →
+# idempotent re-run.
+#
+# Additive: does NOT modify or replace oneway-check.yml.
+#
+# Prerequisites installed below: uv (via setup-uv), python3/git/curl/tar/sha256sum
+# are pre-installed on ubuntu-latest.
+#
+# No secrets required — all assertions are structural (filesystem + parse).
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  clean-install:
+    name: clean-install integration (ubuntu-latest, no preinstalled deps)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout harness
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Verify prerequisites
+        run: |
+          echo "=== prerequisite check ==="
+          uv --version
+          python3 --version
+          git --version
+          curl --version | head -1
+          tar --version | head -1
+          sha256sum --version | head -1
+          echo "=== all prerequisites present ==="
+
+      - name: Run clean-install integration test
+        run: bash scripts/clean-install-test.sh
