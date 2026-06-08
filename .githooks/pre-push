@@ -43,5 +43,57 @@ if [ "$SELFTEST_EXIT" -ne 0 ]; then
 fi
 
 echo ""
+echo "--- pre-push: deps manifest validator ---"
+
+uv run --directory "$REPO_ROOT" scripts/validate_deps.py
+VALIDATE_DEPS_EXIT=$?
+
+if [ "$VALIDATE_DEPS_EXIT" -ne 0 ]; then
+  echo ""
+  echo "BLOCKED: deps manifest validator found errors in manifest/deps.toml."
+  echo "Fix the manifest before pushing."
+  exit 1
+fi
+
+echo ""
+echo "--- pre-push: deps manifest validator self-test ---"
+
+uv run --directory "$REPO_ROOT" scripts/test_validate_deps.py
+VALIDATE_DEPS_TEST_EXIT=$?
+
+if [ "$VALIDATE_DEPS_TEST_EXIT" -ne 0 ]; then
+  echo ""
+  echo "BLOCKED: validate_deps self-test failed — the validator may be broken."
+  echo "Repair test_validate_deps.py / validate_deps.py before pushing."
+  exit 1
+fi
+
+echo ""
+echo "--- pre-push: README/install.sh drift checker ---"
+
+uv run --directory "$REPO_ROOT" scripts/check_readme_drift.py
+README_DRIFT_EXIT=$?
+
+if [ "$README_DRIFT_EXIT" -ne 0 ]; then
+  echo ""
+  echo "BLOCKED: README/install.sh drift detected."
+  echo "Fix the README or install.sh to remove the drift before pushing."
+  exit 1
+fi
+
+echo ""
+echo "--- pre-push: README/install.sh drift checker self-test ---"
+
+uv run --directory "$REPO_ROOT" scripts/test_readme_drift.py
+README_DRIFT_TEST_EXIT=$?
+
+if [ "$README_DRIFT_TEST_EXIT" -ne 0 ]; then
+  echo ""
+  echo "BLOCKED: check_readme_drift self-test failed — the checker may be broken."
+  echo "Repair test_readme_drift.py / check_readme_drift.py before pushing."
+  exit 1
+fi
+
+echo ""
 echo "--- pre-push: all checks green — push allowed ---"
 exit 0

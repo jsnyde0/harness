@@ -9,7 +9,8 @@ Each [[dep]] entry must carry:
   - version (str, non-empty)
   - sha256  (str, exactly 64 lowercase hex characters)
   - arch    (str, non-empty)
-  - install (str, non-empty — download + sha256-verify + extract/install recipe)
+  - install (str, non-empty — documented manual-equivalent recipe: user-local bin dir,
+              pinned sha256 verification; honest mirror of provision-deps.sh, NOT consumed by it)
   - verify  (str, non-empty — command + expected output to confirm installation)
 
 Exits 0 if all deps are valid; exits non-zero if any field is missing or malformed.
