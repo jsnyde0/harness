@@ -10,7 +10,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Subcommands:
 #   provision     — run only the provisioning phase (download + install deps)
 #   install       — alias for default (provision + wire)
-# Future subcommands (stubs for child .3): doctor, --help
+#   doctor        — read-only health check (per-dep + per-harness wiring)
+#   --help / -h   — print usage
 # ---------------------------------------------------------------------------
 SUBCOMMAND="${1:-install}"
 
@@ -24,11 +25,14 @@ CODEX_AGENTS="$TARGET_HOME/.codex/agents"
 CODEX_CONFIG_TOML="$TARGET_HOME/.codex/config.toml"
 CODEX_SKILLS_ROOT="$TARGET_HOME/.agents/skills"
 
-mkdir -p "$PI_AGENT"
-mkdir -p "$CLAUDE_AGENTS"
-mkdir -p "$CODEX_AGENTS"
-mkdir -p "$(dirname "$CODEX_CONFIG_TOML")"
-mkdir -p "$(dirname "$CODEX_SKILLS_ROOT")"
+# Only create directories during install/provision — doctor and --help must be read-only.
+if [[ "$SUBCOMMAND" != "doctor" && "$SUBCOMMAND" != "--help" && "$SUBCOMMAND" != "-h" ]]; then
+  mkdir -p "$PI_AGENT"
+  mkdir -p "$CLAUDE_AGENTS"
+  mkdir -p "$CODEX_AGENTS"
+  mkdir -p "$(dirname "$CODEX_CONFIG_TOML")"
+  mkdir -p "$(dirname "$CODEX_SKILLS_ROOT")"
+fi
 
 backup_existing() {
   local path="$1"
@@ -106,9 +110,61 @@ run_provision() {
   bash "$ROOT/scripts/provision-deps.sh"
 }
 
+run_doctor() {
+  # Pass HARNESS_ROOT and TARGET_HOME to the doctor script.
+  # Doctor is read-only — it must not create, modify, or delete anything.
+  HARNESS_ROOT="$ROOT" TARGET_HOME="$TARGET_HOME" bash "$ROOT/scripts/doctor.sh"
+}
+
+print_help() {
+  cat <<'EOF'
+install.sh — harness installer and health checker
+
+Usage:
+  install.sh [SUBCOMMAND]
+
+Subcommands:
+  install       Full install: provision deps + wire all harness assets.
+                This is the default when no subcommand is given.
+
+  provision     Provision-only phase: download + install pinned deps
+                (beads, CASSMS) into $HOME/.local/bin. Idempotent.
+
+  doctor        Read-only health check. Reports per-dep health (binary
+                present + matching the manifest version pin) and per-harness
+                health (CC/pi/Codex wiring symlinks resolve into the harness
+                tree; reference role 'implementer' round-trips structurally).
+                Prints one line per item with [ok] or [FAIL] prefix, then a
+                summary. Exits non-zero if any item is red.
+
+  --help / -h   Print this help message.
+
+Environment variables:
+  DOTPI_TEST_TARGET   Override $HOME for throwaway-target testing.
+
+Examples:
+  install.sh              # full install (provision + wire)
+  install.sh provision    # provision deps only
+  install.sh doctor       # check health of an installed harness
+  install.sh --help       # show this help
+EOF
+}
+
 case "$SUBCOMMAND" in
   provision)
     run_provision
+    exit 0
+    ;;
+  doctor)
+    # Capture exit code — doctor exits non-zero when items are red.
+    # The 'set -e' flag would stop the script on a non-zero exit from run_doctor,
+    # so we capture it explicitly with '|| true' and exit explicitly.
+    _doctor_exit=0
+    run_doctor || _doctor_exit=$?
+    exit $_doctor_exit
+    ;;
+  --help|-h)
+    print_help
     exit 0
     ;;
   install|"")
@@ -116,7 +172,7 @@ case "$SUBCOMMAND" in
     ;;
   *)
     echo "install.sh: unknown subcommand '$SUBCOMMAND'" >&2
-    echo "Usage: install.sh [provision|install]" >&2
+    echo "Run 'install.sh --help' for usage." >&2
     exit 1
     ;;
 esac
