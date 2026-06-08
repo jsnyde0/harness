@@ -9,9 +9,9 @@ Run the full W4 integration proof locally using Docker before pushing.
 1. `install.sh` provisions beads and CASSMS via checksummed direct download (no bundled binaries)
 2. `install.sh` completes W3 wiring (CC/pi/Codex symlinks)
 3. `install.sh doctor` reports all-green with exit 0
-4. Reference role `implementer` round-trips structurally:
-   - CC symlink `~/.claude/agents/implementer.md` resolves into the harness tree
-   - Codex TOML `~/.codex/agents/implementer.toml` exists and contains `"implementer"`
+4. Reference role `implementer` round-trips structurally (paths shown relative to the install-target home):
+   - CC symlink `.claude/agents/implementer.md` resolves into the harness tree
+   - Codex TOML `.codex/agents/implementer.toml` exists and contains `"implementer"`
    - pi/roles symlink resolves into the harness tree and `implementer.md` exists there
 5. Re-running `install.sh` is a provisioning no-op (binaries not re-fetched)
 

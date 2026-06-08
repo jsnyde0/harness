@@ -219,7 +219,7 @@ run_leg_c() {
 
   local target="$SHARED_TARGET"
 
-  # Break the CC wiring symlink: remove ~/.claude/agents/implementer.md
+  # Break the CC wiring symlink: remove the target's .claude/agents/implementer.md
   local broken_link="$target/.claude/agents/implementer.md"
   if [ ! -L "$broken_link" ]; then
     fail "leg (c): expected symlink $broken_link not found — wiring may be different"
