@@ -1,0 +1,71 @@
+# deps.toml — external-dependency manifest (harness public core)
+# Governed by ADR-002 D7 (D7.3 in particular): this manifest declares external TOOL
+# dependencies that the installer (install.sh) provisions from upstream.
+#
+# DISTINCT FROM core-manifest.toml: this file carries NO public/private path-classification
+# entries. It declares external tools (beads, CASSMS) to be provisioned by the installer.
+# core-manifest.toml classifies substrate assets; deps.toml provisions external binaries.
+#
+# Provisioning model: direct release-binary download + pinned SHA256 (see ADR-002 D7).
+# No binaries are vendored into the repo — only the manifest lives here.
+#
+# Schema: each [[dep]] entry carries:
+#   name     (str) — canonical short name for the tool (used as identifier)
+#   source   (str) — release-download URL template; MUST contain a {version} placeholder
+#   version  (str) — pinned version string (without leading 'v', matching the placeholder)
+#   sha256   (str) — SHA256 checksum of the pinned linux artifact (64 lowercase hex chars)
+#   arch     (str) — architecture/platform descriptor for the pinned artifact
+#                    (e.g. "linux-amd64", "linux-x64")
+#   install  (str) — download + sha256-verify + extract/install recipe (shell commands)
+#   verify   (str) — command to confirm the tool is installed at the expected version
+#
+# arm64 note: beads publishes linux_arm64; CASSMS publishes linux-x64 ONLY (no arm64 build).
+# The beads arm64 artifact is documented in a companion entry; the CASSMS arm64 gap is
+# recorded explicitly via the arm64_available flag below.
+
+# ---------------------------------------------------------------------------
+# beads (bd) — task/work-item tracker
+# Source: github.com/gastownhall/beads
+# ---------------------------------------------------------------------------
+
+[[dep]]
+name    = "beads"
+source  = "https://github.com/gastownhall/beads/releases/download/v{version}/beads_{version}_linux_amd64.tar.gz"
+version = "1.0.4"
+sha256  = "643e602e27f666c8726abff0f22001e2b5883988fa960204bde20a3129d448a5"
+arch    = "linux-amd64"
+install = """
+curl -fsSL https://github.com/gastownhall/beads/releases/download/v{version}/beads_{version}_linux_amd64.tar.gz -o /tmp/beads.tar.gz
+curl -fsSL https://github.com/gastownhall/beads/releases/download/v{version}/checksums.txt -o /tmp/beads-checksums.txt
+grep beads_{version}_linux_amd64.tar.gz /tmp/beads-checksums.txt | sha256sum -c -
+tar -xzf /tmp/beads.tar.gz -C /usr/local/bin bd
+chmod +x /usr/local/bin/bd
+"""
+verify  = "bd version"
+
+# beads arm64 (supplementary — for reference; arm64 is published upstream)
+# arm64 sha256: 48cdf571cd8b64bae81da829c1309e402bc12e6a4cc6b87606dfc9220b7ece60
+# source template: https://github.com/gastownhall/beads/releases/download/v{version}/beads_{version}_linux_arm64.tar.gz
+
+# ---------------------------------------------------------------------------
+# CASSMS (cm) — CASS memory system
+# Source: github.com/Dicklesworthstone/cass_memory_system
+# Platform note: linux-x64 ONLY — no linux arm64 build is published upstream.
+#   arm64 targets must either cross-compile from source or use a compatibility layer.
+#   arm64_available = false is recorded here to make the gap explicit for the installer.
+# ---------------------------------------------------------------------------
+
+[[dep]]
+name    = "cassms"
+source  = "https://github.com/Dicklesworthstone/cass_memory_system/releases/download/v{version}/cass-memory-linux-x64"
+version = "0.2.11"
+sha256  = "6aa3e92db2ee20b27f358ee5bf65be71d5a16c6f2d6c549f724441f486d9fbd5"
+arch    = "linux-x64"
+install = """
+curl -fsSL https://github.com/Dicklesworthstone/cass_memory_system/releases/download/v{version}/cass-memory-linux-x64 -o /tmp/cass-memory-linux-x64
+curl -fsSL https://github.com/Dicklesworthstone/cass_memory_system/releases/download/v{version}/cass-memory-linux-x64.sha256 -o /tmp/cass-memory-linux-x64.sha256
+echo "$(cat /tmp/cass-memory-linux-x64.sha256)  /tmp/cass-memory-linux-x64" | sha256sum -c -
+install -m 755 /tmp/cass-memory-linux-x64 /usr/local/bin/cm
+"""
+verify  = "cm --version"
+arm64_available = false
