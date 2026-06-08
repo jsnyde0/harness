@@ -376,6 +376,15 @@ PYEOF
   fi
   pass "leg (c): bd was NOT installed (checksum abort fired before install)"
 
+  # Assert: cm was NOT installed (regardless of manifest ordering)
+  if [ -f "$target/.local/bin/cm" ]; then
+    fail "leg (c): cm WAS installed despite checksum mismatch — verify-before-install not enforced"
+    rm -rf "$target"
+    rm -f "$corrupted_toml" "$corrupt_log"
+    return 1
+  fi
+  pass "leg (c): cm was NOT installed (checksum abort fired before install)"
+
   rm -rf "$target"
   rm -f "$corrupted_toml" "$corrupt_log"
   return 0

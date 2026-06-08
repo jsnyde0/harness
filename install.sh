@@ -331,8 +331,8 @@ PYEOF
 #    are treated as Untrusted and silently skipped unless trusted_hash is pre-seeded.
 #    Pre-seeding trusted_hash=<sha256 of normalised hook identity> grants Trusted status
 #    so hooks fire without relying on the bypass flag propagating.
-MANIFEST="$ROOT/agent/hooks-manifest.json"
-python3 - "$MANIFEST" "$CODEX_CONFIG_TOML" "$DCG_ADAPTER_SCRIPT" <<'PYEOF'
+HOOKS_MANIFEST="$ROOT/agent/hooks-manifest.json"
+python3 - "$HOOKS_MANIFEST" "$CODEX_CONFIG_TOML" "$DCG_ADAPTER_SCRIPT" <<'PYEOF'
 import sys, json, re, os, hashlib
 
 manifest_path = sys.argv[1]

@@ -58,6 +58,28 @@ detect_arch() {
 }
 
 # ---------------------------------------------------------------------------
+# Use Python/tomllib to get all distinct tool names declared in the manifest
+# (across ALL arches — used to detect gaps for the current arch).
+# Output: one tool name per line (sorted, unique).
+# ---------------------------------------------------------------------------
+all_dep_names() {
+  uv run python3 - "$MANIFEST" <<'PYEOF'
+import sys
+import tomllib
+
+manifest_path = sys.argv[1]
+
+with open(manifest_path, 'rb') as f:
+    data = tomllib.load(f)
+
+deps = data.get('dep', [])
+names = sorted(set(dep.get('name', '') for dep in deps if dep.get('name', '')))
+for name in names:
+    print(name)
+PYEOF
+}
+
+# ---------------------------------------------------------------------------
 # Use Python/tomllib (py3.11+) to parse deps.toml and emit shell-readable data.
 # Invoked via `uv run python3` to ensure py3.11+ is available regardless of the
 # system python version. tomllib is stdlib in py3.11+.
@@ -154,8 +176,9 @@ already_installed() {
     return 1
   fi
 
-  # Check if pinned version appears in the output
-  if echo "$verify_output" | grep -qF "$pinned_version"; then
+  # Check if pinned version appears in the output (word-boundary match to avoid
+  # superstring false-positives: e.g. 1.0.40 must NOT match a 1.0.4 pin).
+  if echo "$verify_output" | grep -qFw "$pinned_version"; then
     return 0
   fi
   return 1
@@ -185,6 +208,12 @@ provision_one() {
   # Download to a temp file
   local tmp_dir
   tmp_dir="$(mktemp -d)"
+  # Ensure tmp_dir is always cleaned up even if verify_sha256 or another
+  # step calls exit 1 (e.g. checksum mismatch).  The tmp_dir value is
+  # embedded literally into the trap string so it resolves correctly at
+  # exit time regardless of variable scope.
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp_dir'" EXIT
   local artifact_file
   artifact_file="$tmp_dir/$(basename "$source_url")"
 
@@ -254,11 +283,25 @@ main() {
     return 0
   fi
 
+  # Track which tool names were actually provisioned for the current arch.
+  local provisioned_names=""
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     IFS='|' read -r dep_name bin_name version sha256 source_url verify_cmd <<< "$line"
     provision_one "$dep_name" "$bin_name" "$version" "$sha256" "$source_url" "$verify_cmd"
+    provisioned_names="$provisioned_names $dep_name"
   done <<< "$deps_data"
+
+  # Warn about any tool declared in the manifest (across ALL arches) that has
+  # zero matching entries for the current arch — e.g. cassms on linux-arm64.
+  local all_names
+  all_names="$(all_dep_names)"
+  while IFS= read -r name; do
+    [ -z "$name" ] && continue
+    if ! echo "$provisioned_names" | grep -qw "$name"; then
+      echo "[provision] WARNING: no entry for '$name' on arch '$arch' — skipping" >&2
+    fi
+  done <<< "$all_names"
 
   echo "[provision] all deps provisioned"
 }
