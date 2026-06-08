@@ -3,6 +3,17 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ---------------------------------------------------------------------------
+# CLI dispatch skeleton
+# ---------------------------------------------------------------------------
+# Default (no args): full install = provision + wire (backward-compatible).
+# Subcommands:
+#   provision     — run only the provisioning phase (download + install deps)
+#   install       — alias for default (provision + wire)
+# Future subcommands (stubs for child .3): doctor, --help
+# ---------------------------------------------------------------------------
+SUBCOMMAND="${1:-install}"
+
 # Target home directory. Override via DOTPI_TEST_TARGET for throwaway-target testing.
 # Default: real $HOME.
 TARGET_HOME="${DOTPI_TEST_TARGET:-$HOME}"
@@ -80,6 +91,39 @@ link_file() {
 
   link_relative "$target" "$link"
 }
+
+# ---------------------------------------------------------------------------
+# Provisioning phase — runs BEFORE wiring phases
+# ---------------------------------------------------------------------------
+# Reads manifest/deps.toml and installs external deps (beads, CASSMS) into
+# $TARGET_HOME/.local/bin. Idempotent: already-correct deps are skipped.
+# SHA256 verified BEFORE install; aborts on mismatch (non-zero exit).
+# Core config: no per-tool config write needed — binaries on PATH is sufficient.
+# beads and cm read their own per-workspace config at runtime.
+# ---------------------------------------------------------------------------
+
+run_provision() {
+  bash "$ROOT/scripts/provision-deps.sh"
+}
+
+case "$SUBCOMMAND" in
+  provision)
+    run_provision
+    exit 0
+    ;;
+  install|"")
+    run_provision
+    ;;
+  *)
+    echo "install.sh: unknown subcommand '$SUBCOMMAND'" >&2
+    echo "Usage: install.sh [provision|install]" >&2
+    exit 1
+    ;;
+esac
+
+# ---------------------------------------------------------------------------
+# W3 symlink / wiring phases (unchanged — provisioning runs before these)
+# ---------------------------------------------------------------------------
 
 # Existing behaviors (preserved)
 link_file AGENTS.md
