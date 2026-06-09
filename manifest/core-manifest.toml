@@ -134,13 +134,6 @@ rationale = "Merged ADR index for the harness repo; navigational companion to th
 [[assets]]
 class = "skill"
 home = "harness"
-path = "methodology/skills/ast-grep"
-disposition = "core"
-rationale = "Neutral: standalone ast-grep CLI, no harness coupling."
-
-[[assets]]
-class = "skill"
-home = "harness"
 path = "methodology/skills/cass"
 disposition = "core"
 rationale = "Neutral: standalone cass CLI, skill itself is uncoupled."
@@ -278,20 +271,6 @@ rationale = "Needs-adaptation (2b): dispatch-coupled; logic is harness-neutral."
 [[assets]]
 class = "skill"
 home = "harness"
-path = "methodology/skills/review"
-disposition = "core"
-rationale = "Needs-adaptation (2b): dispatch-coupled; logic is harness-neutral."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "methodology/skills/review-design"
-disposition = "core"
-rationale = "Needs-adaptation (2b): dispatch-coupled; logic is harness-neutral."
-
-[[assets]]
-class = "skill"
-home = "harness"
 path = "methodology/skills/implement"
 disposition = "core"
 rationale = "Needs-adaptation (2b): dispatch-coupled; logic is harness-neutral."
@@ -337,50 +316,6 @@ home = "harness"
 path = "methodology/skills/bd-memories-write"
 disposition = "core"
 rationale = "Needs-adaptation (2b): hardwires /compound flow; logic is harness-neutral."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "methodology/skills/n8n-workflow"
-disposition = "core"
-rationale = "Needs-adaptation (2b): needs n8n MCP wired; logic is harness-neutral."
-
-# Bucket 2c: diverged v2 twins in CC (5)
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "methodology/skills/beadify-v2"
-disposition = "core"
-rationale = "Needs-adaptation (2c): orphaned CC v2 stub; slated for removal per inventory resolution."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "methodology/skills/brainstorm-v2"
-disposition = "core"
-rationale = "Needs-adaptation (2c): orphaned CC v2 stub; slated for removal."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "methodology/skills/design-v2"
-disposition = "core"
-rationale = "Needs-adaptation (2c): orphaned CC v2 stub; slated for removal."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "methodology/skills/implement-v2"
-disposition = "core"
-rationale = "Needs-adaptation (2c): orphaned CC v2 stub; slated for removal."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "methodology/skills/review-v2"
-disposition = "core"
-rationale = "Needs-adaptation (2c): orphaned CC v2 stub; slated for removal."
 
 # Bucket 3: cc-specific (6)
 
@@ -444,27 +379,6 @@ home = "harness"
 path = "agent/skills/design-pi-system"
 disposition = "core"
 rationale = "Pi-specific: pi extension/tool/hook/package design rubric."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "agent/skills/beadify-bootstrap"
-disposition = "core"
-rationale = "Pi-specific: pi-onboarding scaffolding."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "agent/skills/implement-bootstrap"
-disposition = "core"
-rationale = "Pi-specific: main-session-only impl scaffolding."
-
-[[assets]]
-class = "skill"
-home = "harness"
-path = "agent/skills/review-bootstrap"
-disposition = "core"
-rationale = "Pi-specific: single-session review scaffolding."
 
 [[assets]]
 class = "skill"
