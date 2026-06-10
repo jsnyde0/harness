@@ -273,9 +273,14 @@ class Finding:
 # The leak-check scripts themselves use /Users/ in pattern strings and test fixtures.
 # Exclude them from the all-tracked scan to avoid false positives from the tool's own
 # pattern definitions. They are still tested for correctness in the self-test suite.
+# The example markers config is also excluded: it intentionally contains placeholder
+# private-token strings (your-work-org, myproj-abc1, ...) to demonstrate the format, and
+# in CI (where the gitignored .local.toml is absent) it is loaded as the fallback config —
+# scanning it would self-match those placeholders. (.local.toml is gitignored, never tracked.)
 SCAN_SELF_EXCLUSIONS = {
     "scripts/oneway-check.py",
     "scripts/test_oneway_check.py",
+    "scripts/oneway-markers.example.toml",
 }
 
 
