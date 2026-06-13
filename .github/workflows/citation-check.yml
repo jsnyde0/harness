@@ -1,0 +1,23 @@
+name: citation softener gate
+
+# Fail-closed gate: published body files must contain no residual bare ADR-NNN
+# citations after the soften-citations.py transform (ADR-002 D6, D7.7).
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  citation-check:
+    name: check published bodies for residual ADR citations
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout harness
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run citation softener --check over published corpus
+        run: uv run scripts/check-citations.py
