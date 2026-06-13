@@ -20,7 +20,7 @@ The temptation is to either (a) treat the framing as authoritative and skip revi
 
 - **Trusting the framing because someone else wrote it.** Beads authored in prior sessions have the same self-anchoring problem as beads you just wrote — the author was biased by their context, you weren't there to check, and time has passed since. Adversarial review is *more* warranted, not less.
 - **Re-framing from scratch.** The opposite failure: ignoring the existing `--design` and recreating it from your own framing. Wastes the prior work and loses any decisions the prior author captured. Read first, review second, edit only on substantive findings.
-- **Skipping freshness check on `canonical_refs`.** ADRs evolve in place per ADR-011 D1. A bead authored against ADR-X version N may now be operating against ADR-X version N+2 — the framing may quietly contradict current substrate.
+- **Skipping freshness check on `canonical_refs`.** ADRs evolve in place. A bead authored against ADR-X version N may now be operating against ADR-X version N+2 — the framing may quietly contradict current substrate.
 
 ## Why this is in recipes
 

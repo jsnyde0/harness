@@ -1,6 +1,6 @@
 ---
 name: scope-check
-description: Outward-look primitive — for a proposed bead or pre-decomposed bead set, produce a checklist of neighbors it likely touches (files, sibling beads, ADRs in scope). Use when about to `bd create` with a parent that already holds children, when a pre-decomposed list arrives (tiered findings, P0/P1/P2 punch list, security audit checklist, ordered bead-IDs handed in, "remaining issues" continuation), before invoking `/decompose`, before claiming the first bead in a multi-bead unit, or when authoring an ADR with potential overlap. Triggers on "punch list", "tiered findings", "P0/P1/P2", "remaining issues", multi-bead-ID input, "ship these beads". Default-on for multi-bead-epic authoring and before `/decompose` per ADR-012 D3. Fresh-context single-dispatch (overlap-blindness is a context-bound failure mode). Distinct from `/adversarial-review` (which judges own-work, not produces information).
+description: Outward-look primitive — for a proposed bead or pre-decomposed bead set, produce a checklist of neighbors it likely touches (files, sibling beads, ADRs in scope). Use when about to `bd create` with a parent that already holds children, when a pre-decomposed list arrives (tiered findings, P0/P1/P2 punch list, security audit checklist, ordered bead-IDs handed in, "remaining issues" continuation), before invoking `/decompose`, before claiming the first bead in a multi-bead unit, or when authoring an ADR with potential overlap. Triggers on "punch list", "tiered findings", "P0/P1/P2", "remaining issues", multi-bead-ID input, "ship these beads". Default-on for multi-bead-epic authoring and before `/decompose`. Fresh-context single-dispatch (overlap-blindness is a context-bound failure mode). Distinct from `/adversarial-review` (which judges own-work, not produces information).
 ---
 
 ## Purpose
@@ -11,9 +11,9 @@ For a proposed bead, list neighbors it likely touches: files, sibling beads, in-
 
 ## When to invoke
 
-**Default-on triggers** (per ADR-012 D3):
+**Default-on triggers:**
 
-1. **Bead authoring within a multi-bead epic** — when creating a bead with `bd create --parent=<epic-id>` and the epic *already holds ≥ 1 other child* at create time. Invoke before `--design`/`--acceptance` are finalized. (Interpretation note: ADR-012 D3 says "multi-bead epic"; the substrate-legible signal at create-time is the existing child count. First-child case is judgment-routed under this interpretation. Pending in-place resolution — a parked follow-up bead tracks the clarification.)
+1. **Bead authoring within a multi-bead epic** — when creating a bead with `bd create --parent=<epic-id>` and the epic *already holds ≥ 1 other child* at create time. Invoke before `--design`/`--acceptance` are finalized. (Interpretation note: the default-on rule says "multi-bead epic"; the substrate-legible signal at create-time is the existing child count. First-child case is judgment-routed under this interpretation. Pending in-place resolution — a parked follow-up bead tracks the clarification.)
 2. **Before `/decompose`** — at the **orchestrator-recipe level**, not as a sub-step inside `/decompose`. Orchestrator runs `/scope-check <parent-id>` *before* invoking `/decompose <parent-id>`. Each primitive stays single-purpose; orchestrator coordinates.
 
 **Judgment-routed** otherwise:
@@ -31,19 +31,19 @@ For a proposed bead, list neighbors it likely touches: files, sibling beads, in-
 ```
 
 1. **Read the bead's state** — `bd show <bead-id> --json` to get `--description`, `--design`, `--acceptance`, `--notes`.
-2. **Dispatch one fresh-context subagent via `Task()`** with the brief (see below). No internal rounds; single dispatch. Subagent has no shared context with the orchestrator and no memory of prior scope-checks (per ADR-007 D3).
+2. **Dispatch one fresh-context subagent via `Task`** with the brief (see below). No internal rounds; single dispatch. Subagent has no shared context with the orchestrator and no memory of prior scope-checks.
 3. **Receive the three-section checklist** (see Output shape below).
 4. **Orchestrator folds the checklist into bead substrate:**
-   - **ADRs** → added to `--design`'s `## canonical_refs` section (per ADR-008 D5). Orchestrator may demote entries to `_(noted, not load-bearing)_` annotation if in-scope but not consulted.
-   - **Files + Sibling beads + invocation residue** → appended to `--notes` under `## Scope-check record` block.
-   - **Sibling beads → `bd dep add` candidates** — orchestrator separately decides which warrant a real dep edge (overlap ≠ dependency).
+ - **ADRs** → added to `--design`'s `## canonical_refs` section. Orchestrator may demote entries to `_(noted, not load-bearing)_` annotation if in-scope but not consulted.
+ - **Files + Sibling beads + invocation residue** → appended to `--notes` under `## Scope-check record` block.
+ - **Sibling beads → `bd dep add` candidates** — orchestrator separately decides which warrant a real dep edge (overlap ≠ dependency).
 5. **Stamp the audit signal:**
-   ```
-   BEADS_ACTOR=scope-check:fresh-subagent bd update <bead-id> --add-label=scope-checked
-   ```
+ ```
+ BEADS_ACTOR=scope-check:fresh-subagent bd update <bead-id> --add-label=scope-checked
+ ```
 6. **Return** — orchestrator may pass the checklist directly to /decompose's draft step (in-memory hand-off) in addition to the substrate fold.
 
-If the first dispatch misses obvious neighbors, the orchestrator re-invokes `/scope-check` externally as a **second independent pass** (fresh `Task()` carries no memory of prior runs). The second-pass brief must explicitly direct the subagent to read the bead's prior `## Scope-check record` block in `--notes` and surface neighbors NOT already listed — otherwise the second pass redundantly surfaces the same neighbors.
+If the first dispatch misses obvious neighbors, the orchestrator re-invokes `/scope-check` externally as a **second independent pass** (fresh `Task` carries no memory of prior runs). The second-pass brief must explicitly direct the subagent to read the bead's prior `## Scope-check record` block in `--notes` and surface neighbors NOT already listed — otherwise the second pass redundantly surfaces the same neighbors.
 
 ## Output shape (the subagent emits)
 
@@ -85,7 +85,7 @@ Append to `--notes` under `## Scope-check record`:
 ```
 ## Scope-check record (<date>)
 
-**Dispatched:** <date> — one fresh-context subagent via Task().
+**Dispatched:** <date> — one fresh-context subagent via Task.
 **Actor token:** scope-check:fresh-subagent
 **Finding count:** <N> Files / <N> Sibling beads / <N> ADRs in scope.
 
@@ -104,7 +104,7 @@ Append to `--notes` under `## Scope-check record`:
 - The label name is **distinct** from `verdict:pass|fail` deliberately — conflating would corrupt the close-time check's signal.
 - **Substrate-legibility, not substrate-enforcement** — `bd list --label=scope-checked` filters correctly, but the close-time check's current contract only consumes `verdict:*` labels. Substrate-enforcement of default-on trigger #1 requires a future extension (parked as a follow-up bead). Until then, default-on relies on orchestrator discipline.
 
-**Substrate identity-check limitation** (per the reviewer-identity design bead D3, parallel to the decompose-primitive design bead D8's acknowledgment): substrate cannot verify the orchestrator's actor token is a *real* fresh-`Task()` dispatch. The recipe layer (this skill file) enforces the discipline.
+**Substrate identity-check limitation** (per the reviewer-identity design bead D3, parallel to the decompose-primitive design bead D8's acknowledgment): substrate cannot verify the orchestrator's actor token is a *real* fresh-`Task` dispatch. The recipe layer (this skill file) enforces the discipline.
 
 ## No freshness predicate
 
@@ -125,18 +125,13 @@ Unlike `verdict:*` labels (reviewer-identity design bead D3 freshness predicate)
 - `bd update <bead-id> --design-file=<path>` — fold ADRs into `## canonical_refs`
 - `bd update <bead-id> --append-notes=<text>` — append `## Scope-check record`
 - `BEADS_ACTOR=scope-check:fresh-subagent bd update <bead-id> --add-label=scope-checked` — stamp the substrate signal
-- `Task()` — dispatch the fresh-context subagent
+- `Task` — dispatch the fresh-context subagent
 
 ## Canonical refs
 
-- ADR-012 D3 sub-item #1 (scope-check primitive; "outward-look"; default-on triggers); D6 (dogfooding-ledger requirement for promotion to FIRM).
-- ADR-008 D1 (universal predicates), D5 (`## canonical_refs` mandate)
-- ADR-007 D3 (fresh-`Task()` per dispatch)
-- ADR-006 D10 (warrant tags in Alternatives tables)
-- ADR-011 D1 (in-place ADR evolution — evolution path for the close-time check extension when the parked follow-up lands)
 - scope-check design bead (full design with rationale, alternatives, invalidation — read for context beyond what this SKILL.md carries)
 - reviewer-identity design bead (verdict label + audit-log actor + freshness predicate; this skill's label scheme is *adjacent*, not the same)
 - decompose-primitive design bead (decomposition; this skill runs *before* /decompose at orchestrator-recipe level — not inside)
 - adversarial-review design bead (adversarial-review; composition ordering when both default-on)
 - parked follow-up bead (close-time check extension to consume `scope-checked` label — substrate-enforcement of default-on trigger #1)
-- parked follow-up bead (ADR-012 D3 "multi-bead epic" qualifier clarification — first-child interpretation)
+- parked follow-up bead ("multi-bead epic" qualifier clarification — first-child interpretation)

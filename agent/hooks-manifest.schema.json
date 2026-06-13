@@ -68,8 +68,8 @@
         },
         "outputFormat": {
           "type": "string",
-          "enum": ["json", "cc-hook"],
-          "description": "Protocol adapter. Omit for default exit-code protocol. 'json' = dcg decision:deny. 'cc-hook' = Claude Code hookSpecificOutput.permissionDecision."
+          "enum": ["json", "cc-hook", "system-prompt-append"],
+          "description": "Protocol adapter. Omit for default exit-code protocol. 'json' = dcg decision:deny. 'cc-hook' = Claude Code hookSpecificOutput.permissionDecision. 'system-prompt-append' = before_agent_start injection: stdout appended to system prompt on exit 0; non-zero exit skips injection."
         },
         "description": {
           "type": "string",

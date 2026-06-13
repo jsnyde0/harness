@@ -123,7 +123,7 @@ The five Markdown sections below are **required** in the brief — omitting any 
 
 | Underlying job (user-language) | Feature (any name) | <P1> | <P2> | <P3> | Notes |
 | --- | --- | --- | --- | --- | --- |
-| <job in user-language>         | <name>             |  ✓   |  ~   |  ✗   | <one-line> |
+| <job in user-language> | <name> | ✓ | ~ | ✗ | <one-line> |
 
 Table-stakes observations: <which jobs most platforms address>.
 
@@ -210,8 +210,8 @@ Structural defenses exist where listed; the rest are discipline.
 
 ## Canonical refs
 
-- [ADR-007 D3](../../docs/decisions/ADR-007-primitive-loop.md) — fresh-`Task()` per dispatch; load-bearing for parallel scout fan-out in Phase 2.
-- [ADR-012 D3](../../docs/decisions/ADR-012-substrate-thick-process-thin.md) — substrate-thick / process-thin discipline; synthesis stays in orchestrator (the brain's judgment pass), not in a synthesizer subagent.
+- fresh-Task-per-dispatch ADR — fresh-`Task` per dispatch; load-bearing for parallel scout fan-out in Phase 2.
+- substrate-thick-process-thin ADR — substrate-thick / process-thin discipline; synthesis stays in orchestrator (the brain's judgment pass), not in a synthesizer subagent.
 - scout-adrs/SKILL.md (methodology home) — sibling outward-look primitive; this is its external-product counterpart.
 - content-extractor agent (methodology home) — schema-pinned extraction precedent; `feature-scout` is the same pattern with browser ability + light classification.
 - bd memory `orchestration-research-2026-05-14` — convergent finding: subagent = context offload; brain pays for judgment, workers pay for volume. Also: Cagan / Torres / Ulwick anti-patterns that shape the synthesis lenses and output discipline.

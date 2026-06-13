@@ -13,7 +13,7 @@ Distinct from `/scope-check`'s INDEX-scan signal: scope-check folds ADR matches 
 
 Agent-judgment-routed. Useful triggers:
 
-- Before drafting a design narrative or new ADR — to surface already-decided territory ([ADR-011 D2](../../docs/decisions/ADR-011-adrs-reflect-target-architecture.md)).
+- Before drafting a design narrative or new ADR — to surface already-decided territory (discoverability check before authoring).
 - Before scoping a new bead or epic — to know which FIRM decisions constrain the shape.
 - When the user asks "is there an ADR on X?" or "what's our position on Y?"
 - Mid-implementation when a load-bearing choice surfaces that wasn't anticipated.
@@ -89,8 +89,8 @@ No prescribed order. Capable models compose signals well; prescription becomes s
 
 ## Canonical refs
 
-- [ADR-011 D2](../../docs/decisions/ADR-011-adrs-reflect-target-architecture.md) — discoverability check before authoring new ADRs (new-decision-space test).
-- [ADR-012 D2](../../docs/decisions/ADR-012-substrate-thick-process-thin.md) — INDEX.md cross-cutting filter + Scope-column conventions; substrate-thick / process-thin discipline this skill follows.
-- [ADR-008 D5](../../docs/decisions/ADR-008-adr-predicates-and-plan.md) — `## canonical_refs` mandate; the graph this skill walks.
-- [ADR-007 D3](../../docs/decisions/ADR-007-primitive-loop.md) — fresh-`Task()` per dispatch.
+- ADRs-reflect-target-architecture — discoverability check before authoring new ADRs (new-decision-space test).
+- substrate-thick / process-thin — INDEX.md cross-cutting filter + Scope-column conventions; the discipline this skill follows.
+- ADR predicates mandate — `## canonical_refs` mandate; the graph this skill walks.
+- fresh-`Task` per dispatch — the dispatch discipline this skill follows.
 - scope-check/SKILL.md (methodology home) — the outward-look-during-bead-authoring counterpart; INDEX-scan is one of four signals there, the *only* signal here.

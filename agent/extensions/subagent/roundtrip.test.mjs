@@ -18,7 +18,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { readFile, stat, realpath } from "node:fs/promises";
-import { existsSync, rmSync, mkdirSync, mkdtempSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { exec as execCallback } from "node:child_process";
 import { promisify } from "node:util";
 import path from "node:path";
@@ -33,59 +33,15 @@ const exec = promisify(execCallback);
 
 const HOME = os.homedir();
 const DOTPI_ROOT = new URL("../../..", import.meta.url).pathname.replace(/\/$/, "");
+const PI_ROLES_DIR = path.join(HOME, ".pi", "agent", "roles");
+const PI_SKILLS_DIR = path.join(HOME, ".pi", "agent", "skills");
+const CLAUDE_AGENTS_DIR = path.join(HOME, ".claude", "agents");
+const CLAUDE_SETTINGS = path.join(HOME, ".claude", "settings.json");
 const HOOKS_MANIFEST = path.join(DOTPI_ROOT, "agent", "hooks-manifest.json");
 const INSTALL_SH = path.join(DOTPI_ROOT, "install.sh");
 const SUBAGENT_INDEX = path.join(DOTPI_ROOT, "agent", "extensions", "subagent", "index.ts");
 const ROLE_LOADER_MJS = path.join(DOTPI_ROOT, "agent", "extensions", "subagent", "role-loader.mjs");
 const HOOKS_CORE_MJS = path.join(DOTPI_ROOT, "agent", "extensions", "hooks", "core.mjs");
-
-// ─── Throwaway target home ────────────────────────────────────────────────────
-//
-// ROUNDTRIP_TARGET_HOME: override env var to use a specific throwaway target.
-// Default: auto-create a fresh mktemp -d under $HOME/tmp (NEVER real $HOME).
-// The target is created once at module load time, used throughout, and cleaned up
-// in a process exit handler.
-//
-// Relative symlinks require the target to share the $HOME path prefix — /tmp
-// would dangle on macOS (/tmp → /private/tmp).
-
-let _targetHome = process.env.ROUNDTRIP_TARGET_HOME || null;
-let _targetHomeSelfCreated = false;
-
-if (!_targetHome) {
-  // Create the throwaway target under $HOME/tmp synchronously before any tests run.
-  const tmpBase = path.join(HOME, "tmp");
-  mkdirSync(tmpBase, { recursive: true });
-  _targetHome = mkdtempSync(path.join(tmpBase, "roundtrip-target-"));
-  _targetHomeSelfCreated = true;
-  console.log(`[roundtrip] Created throwaway TARGET_HOME: ${_targetHome}`);
-} else {
-  console.log(`[roundtrip] Using env ROUNDTRIP_TARGET_HOME: ${_targetHome}`);
-}
-
-const TARGET_HOME = _targetHome;
-
-// Cleanup throwaway target on process exit (best-effort).
-if (_targetHomeSelfCreated) {
-  process.on("exit", () => {
-    try {
-      rmSync(TARGET_HOME, { recursive: true, force: true });
-    } catch {
-      // best-effort: leave the dir if cleanup fails
-    }
-  });
-}
-
-// ─── Installed-path constants (rooted at TARGET_HOME) ─────────────────────────
-// These are the paths where install.sh places its artifacts.
-const PI_ROLES_DIR = path.join(TARGET_HOME, ".pi", "agent", "roles");
-const PI_SKILLS_DIR = path.join(TARGET_HOME, ".pi", "agent", "skills");
-const CLAUDE_AGENTS_DIR = path.join(TARGET_HOME, ".claude", "agents");
-
-// Live CC/Codex config paths — still reference REAL HOME because these are
-// runtime-config files (settings.json, ~/.codex/config.toml) that are not
-// produced by install into the throwaway target; they require real CC/Codex auth.
-const CLAUDE_SETTINGS = path.join(HOME, ".claude", "settings.json");
 
 // Reference roles (the two used for the generality proof)
 const REF_ROLE_1 = "file-scanner";
@@ -140,72 +96,102 @@ const DOTPI_ENV_PATH = path.join(DOTPI_ROOT, ".env");
 
 // ─── Step 0: Live install ─────────────────────────────────────────────────────
 
-test("Step 0: throwaway install — creates symlinks from harness source into throwaway TARGET_HOME", async () => {
-  // SAFETY: install ALWAYS runs against TARGET_HOME (throwaway), NEVER real $HOME.
-  // TARGET_HOME was created under $HOME/tmp at module load time.
-  // Relative symlinks require the target to share the $HOME path prefix — this is satisfied
-  // because TARGET_HOME is under $HOME/tmp.
-  //
-  // Run install.sh with DOTPI_TEST_TARGET=<throwaway> — this is the THROWAWAY-DEFAULT path.
-  // The old Step 0 ran against real $HOME; this is the de-footgunned replacement.
+test("Step 0: live install — backs up existing agents and creates symlinks", async () => {
+  // Check pre-install state: do existing agents exist as non-dotpi files?
+  const fileScannerLink = path.join(CLAUDE_AGENTS_DIR, "file-scanner.md");
+  const contentExtractorLink = path.join(CLAUDE_AGENTS_DIR, "content-extractor.md");
 
-  const { stdout: installOut, stderr: installErr } = await exec(
-    `DOTPI_TEST_TARGET="${TARGET_HOME}" bash "${INSTALL_SH}"`
-  ).catch((err) => ({ stdout: err.stdout || "", stderr: err.stderr || err.message }));
+  let fileScannerPreState = "absent";
+  let contentExtractorPreState = "absent";
 
-  console.log("install.sh stdout (first 400):", installOut.slice(0, 400));
-  if (installErr) console.log("install.sh stderr (first 200):", installErr.slice(0, 200));
+  try {
+    const stat1 = await stat(fileScannerLink);
+    // Check if it's a symlink vs real file
+    const { stdout: linkTarget } = await exec(`readlink "${fileScannerLink}" 2>/dev/null || echo ""`)
+      .catch(() => ({ stdout: "" }));
+    if (linkTarget.trim()) {
+      // It's a symlink — check if it points into dotpi already
+      const target = linkTarget.trim();
+      if (target.includes(DOTPI_ROOT)) {
+        fileScannerPreState = "dotpi-symlink";
+      } else {
+        fileScannerPreState = "foreign-symlink";
+      }
+    } else {
+      fileScannerPreState = "regular-file";
+    }
+  } catch {
+    fileScannerPreState = "absent";
+  }
 
-  // Verify post-install: TARGET_HOME/.pi/agent/roles symlink exists and resolves to harness source
-  const piRolesLink = path.join(TARGET_HOME, ".pi", "agent", "roles");
+  try {
+    const { stdout: linkTarget } = await exec(`readlink "${contentExtractorLink}" 2>/dev/null || echo ""`)
+      .catch(() => ({ stdout: "" }));
+    if (linkTarget.trim()) {
+      const target = linkTarget.trim();
+      contentExtractorPreState = target.includes(DOTPI_ROOT) ? "dotpi-symlink" : "foreign-symlink";
+    } else {
+      contentExtractorPreState = "regular-file";
+    }
+  } catch {
+    contentExtractorPreState = "absent";
+  }
+
+  // Run install.sh against real $HOME
+  const { stdout: installOut, stderr: installErr } = await exec(`bash "${INSTALL_SH}"`)
+    .catch((err) => ({ stdout: err.stdout || "", stderr: err.stderr || err.message }));
+
+  console.log("install.sh stdout:", installOut);
+  if (installErr) console.log("install.sh stderr:", installErr);
+
+  // Verify: if pre-state was regular-file, install must have created a backup
+  if (fileScannerPreState === "regular-file") {
+    // There should be a .backup.* file
+    const { stdout: backupList } = await exec(`ls "${CLAUDE_AGENTS_DIR}/file-scanner.md.backup."* 2>/dev/null || echo ""`)
+      .catch(() => ({ stdout: "" }));
+    const backupFiles = backupList.trim().split("\n").filter(Boolean);
+    assert.ok(backupFiles.length > 0, `file-scanner.md was a regular file pre-install; expected a .backup.* file to exist. Install output: ${installOut}`);
+    console.log(`Backed up file-scanner.md -> ${backupFiles[0]}`);
+    // REPORT: user can restore from this backup
+    console.log(`NOTE FOR USER: To restore original file-scanner.md, run: cp "${backupFiles[0]}" "${fileScannerLink}"`);
+  }
+  if (contentExtractorPreState === "regular-file") {
+    const { stdout: backupList } = await exec(`ls "${CLAUDE_AGENTS_DIR}/content-extractor.md.backup."* 2>/dev/null || echo ""`)
+      .catch(() => ({ stdout: "" }));
+    const backupFiles = backupList.trim().split("\n").filter(Boolean);
+    assert.ok(backupFiles.length > 0, `content-extractor.md was a regular file pre-install; expected a .backup.* file to exist. Install output: ${installOut}`);
+    console.log(`Backed up content-extractor.md -> ${backupFiles[0]}`);
+    console.log(`NOTE FOR USER: To restore original content-extractor.md, run: cp "${backupFiles[0]}" "${contentExtractorLink}"`);
+  }
+
+  // Verify post-install: ~/.pi/agent/roles/ symlink exists and resolves to dotpi source
+  const piRolesLink = path.join(HOME, ".pi", "agent", "roles");
   const piRolesIsLink = await exec(`test -L "${piRolesLink}" && echo "yes" || echo "no"`)
     .then(({ stdout }) => stdout.trim() === "yes")
     .catch(() => false);
-  assert.ok(piRolesIsLink, `Expected TARGET_HOME/.pi/agent/roles to be a symlink after install. Install output: ${installOut.slice(0, 400)}`);
+  assert.ok(piRolesIsLink, `Expected ~/.pi/agent/roles to be a symlink after install. Install output: ${installOut}`);
 
   const piRolesResolved = await realpath(piRolesLink);
   assert.equal(piRolesResolved, path.join(DOTPI_ROOT, "agent", "roles"),
-    `TARGET_HOME/.pi/agent/roles should resolve to ${DOTPI_ROOT}/agent/roles, got ${piRolesResolved}`);
+    `~/.pi/agent/roles should resolve to ${DOTPI_ROOT}/agent/roles, got ${piRolesResolved}`);
 
-  // Verify: TARGET_HOME/.claude/agents/file-scanner.md is now a symlink to dotpi source
-  const fileScannerLink = path.join(CLAUDE_AGENTS_DIR, "file-scanner.md");
+  // Verify: $CLAUDE_HOME/agents/file-scanner.md is now a symlink to dotpi source
   const fsStat = await exec(`test -L "${fileScannerLink}" && echo "yes" || echo "no"`)
     .then(({ stdout }) => stdout.trim() === "yes")
     .catch(() => false);
-  assert.ok(fsStat, `Expected TARGET_HOME/.claude/agents/file-scanner.md to be a symlink after install`);
+  assert.ok(fsStat, `Expected $CLAUDE_HOME/agents/file-scanner.md to be a symlink after install`);
 
   const fsResolved = await realpath(fileScannerLink);
   assert.equal(fsResolved, path.join(DOTPI_ROOT, "agent", "roles", "file-scanner.md"),
     `file-scanner.md should resolve to dotpi source`);
 
   // Verify content-extractor.md too
-  const contentExtractorLink = path.join(CLAUDE_AGENTS_DIR, "content-extractor.md");
   const ceIsLink = await exec(`test -L "${contentExtractorLink}" && echo "yes" || echo "no"`)
     .then(({ stdout }) => stdout.trim() === "yes")
     .catch(() => false);
-  assert.ok(ceIsLink, `Expected TARGET_HOME/.claude/agents/content-extractor.md to be a symlink after install`);
+  assert.ok(ceIsLink, `Expected $CLAUDE_HOME/agents/content-extractor.md to be a symlink after install`);
 
-  // Verify relative symlink (not absolute)
-  const rawLink = (await exec(`readlink "${piRolesLink}"`)).stdout.trim();
-  assert.ok(!rawLink.startsWith("/"),
-    `Roles symlink must be relative (not absolute), got: ${rawLink}`);
-
-  // Verify real $HOME was NOT touched — TARGET_HOME is the throwaway target.
-  // Check that the real ~/.pi/agent/roles (if it exists) does NOT point into TARGET_HOME.
-  const realPiRolesLink = path.join(HOME, ".pi", "agent", "roles");
-  try {
-    const realLinkTarget = (await exec(`readlink "${realPiRolesLink}" 2>/dev/null`)).stdout.trim();
-    if (realLinkTarget) {
-      assert.ok(!realLinkTarget.includes(TARGET_HOME),
-        `Real ~/.pi/agent/roles must NOT point into throwaway TARGET_HOME. ` +
-        `If it does, install.sh ran against real HOME instead of the throwaway.`);
-    }
-  } catch {
-    // Real ~/.pi/agent/roles does not exist — that's fine (clean machine)
-  }
-
-  console.log(`Step 0 PASS (THROWAWAY): install ran against TARGET_HOME=${TARGET_HOME}, never real HOME=${HOME}`);
-  console.log(`Step 0: symlinks land in TARGET_HOME, resolve to harness source, are relative`);
+  console.log("Step 0 PASS: install backed up existing agents (if needed), created symlinks to dotpi source");
 });
 
 // ─── (a) Pi role dispatch — load-bearing proof ───────────────────────────────
@@ -402,13 +388,7 @@ test("(b) CC dispatch: file-scanner.md symlink resolves to dotpi source, valid m
   console.log(`(b) PASS (symlink+frontmatter): file-scanner.md symlinked to dotpi source, model:${modelValue}, pi-model:${piModelValue}`);
 });
 
-test("(b-live) CC dispatch: LIVE headless claude -p --agent file-scanner runs on pinned haiku model", async (t) => {
-  // THROWAWAY-DEFAULT: The `claude` binary reads CLAUDE_HOME from $CLAUDE_CONFIG_DIR env.
-  // We attempt to redirect it to TARGET_HOME via CLAUDE_CONFIG_DIR=TARGET_HOME/.claude.
-  // If the binary does not honor CLAUDE_CONFIG_DIR cleanly (version-dependent), we skip.
-  // Deferred to f8l.8 live-home switchover.
-  t.skip("deferred to f8l.8 live-home switchover — claude binary cannot be cleanly redirected away from real $HOME via CLAUDE_CONFIG_DIR without risking real-home reads; structural proof covered by (b)");
-  return;
+test("(b-live) CC dispatch: LIVE headless claude -p --agent file-scanner runs on pinned haiku model", async () => {
   // Read the role's model: field to derive the expected CC model keyword
   const fileScannerLink = path.join(CLAUDE_AGENTS_DIR, "file-scanner.md");
   const content = await readFile(fileScannerLink, "utf8");
@@ -939,11 +919,32 @@ test("(e) compile-skill: throwaway install target — readlink resolves to dotpi
     assert.equal(extResolved, path.join(DOTPI_ROOT, "agent", "extensions"),
       `Throwaway .pi/agent/extensions must resolve to dotpi source`);
 
-    // Verify skills symlink
-    const skillsLink = path.join(targetDir, ".pi", "agent", "skills");
-    const skillsResolved = await realpath(skillsLink);
-    assert.equal(skillsResolved, path.join(DOTPI_ROOT, "agent", "skills"),
-      `Throwaway .pi/agent/skills must resolve to dotpi source`);
+    // Verify skills is a compiled real directory (not a symlink to dotpi source)
+    // The compile transform (ADR-002 D2 dispatch-placeholder/both-compiled projection) produces
+    // a compiled copy that strips CC-only lines (Task()) and resolves $SKILLS_ROOT.
+    const skillsDir = path.join(targetDir, ".pi", "agent", "skills");
+    const skillsIsLink = await exec(`test -L "${skillsDir}" && echo "yes" || echo "no"`)
+      .then(({ stdout }) => stdout.trim() === "yes")
+      .catch(() => false);
+    assert.ok(!skillsIsLink, `Throwaway .pi/agent/skills must be a compiled real directory, NOT a symlink (compile transform replaced wholesale symlink)`);
+
+    const skillsDirExists = await exec(`test -d "${skillsDir}" && echo "yes" || echo "no"`)
+      .then(({ stdout }) => stdout.trim() === "yes")
+      .catch(() => false);
+    assert.ok(skillsDirExists, `Throwaway .pi/agent/skills must be a real directory (compiled)`);
+
+    // Verify zero Task( in compiled adversarial-review body (acceptance criterion c)
+    const arSkill = path.join(skillsDir, "adversarial-review", "SKILL.md");
+    const arContent = await readFile(arSkill, "utf8");
+    const taskCount = (arContent.match(/Task\(/g) ?? []).length;
+    assert.equal(taskCount, 0,
+      `Compiled adversarial-review SKILL.md must have zero Task( occurrences (CC dispatch stripped)`);
+
+    // Verify $SKILLS_ROOT resolved (acceptance criterion a/F2)
+    const decomposeSkill = path.join(skillsDir, "decompose", "SKILL.md");
+    const decomposeContent = await readFile(decomposeSkill, "utf8");
+    assert.ok(!decomposeContent.includes("$SKILLS_ROOT"),
+      `Compiled decompose SKILL.md must not contain \\$SKILLS_ROOT (must be resolved to absolute path)`);
 
     // Verify per-role files symlinked into .claude/agents/
     const fileScannerLink = path.join(targetDir, ".claude", "agents", "file-scanner.md");
@@ -961,7 +962,7 @@ test("(e) compile-skill: throwaway install target — readlink resolves to dotpi
     assert.ok(!rawLink.trim().startsWith("/"),
       `Roles symlink must be relative (not absolute), got: ${rawLink.trim()}`);
 
-    console.log(`(e) PASS: throwaway install — readlink resolves to dotpi source. Target: ${targetDir}`);
+    console.log(`(e) PASS: throwaway install — skills compiled (not symlink), zero Task( in adversarial-review, $SKILLS_ROOT resolved. Target: ${targetDir}`);
   } finally {
     // Cleanup throwaway target
     await exec(`rm -rf "${targetDir}"`).catch(() => {});
@@ -1108,15 +1109,15 @@ async function probeCodexLiveness() {
 // ─── (f-derive) Codex TOML derivation: model-took observable ─────────────────
 
 test("(f-derive) Codex: generated TOML derives model+model_provider+developer_instructions from shared markdown brief", async () => {
-  // THROWAWAY-DEFAULT: Run install against TARGET_HOME (throwaway), NEVER real HOME.
-  // The install was already run in Step 0 — re-use TARGET_HOME artifacts.
-  // No re-install needed: Step 0 already ran DOTPI_TEST_TARGET=TARGET_HOME bash install.sh.
+  // Run install to generate the TOML into ~/.codex/agents/
+  const { stdout: installOut, stderr: installErr } = await exec(`bash "${INSTALL_SH}"`)
+    .catch((err) => ({ stdout: err.stdout || "", stderr: err.stderr || err.message }));
 
-  // 1. Generated TOML must exist for the reference role (in TARGET_HOME's .codex/agents/)
-  const tomlPath = path.join(TARGET_HOME, ".codex", "agents", `${REF_ROLE_1}.toml`);
+  // 1. Generated TOML must exist for the reference role
+  const tomlPath = path.join(CODEX_AGENTS_DIR, `${REF_ROLE_1}.toml`);
   const tomlExists = existsSync(tomlPath);
   assert.ok(tomlExists,
-    `Generated Codex TOML must exist at ${tomlPath}. Was Step 0 install run? Check TARGET_HOME=${TARGET_HOME}`);
+    `Generated Codex TOML must exist at ${tomlPath}. Install output: ${installOut}`);
 
   // 2. Parse the TOML and assert required fields
   const tomlContent = await readFile(tomlPath, "utf8");
@@ -1178,14 +1179,12 @@ test("(f-derive) Codex: generated TOML derives model+model_provider+developer_in
 // under the [hooks] PreToolUse section, and the dcg adapter script was generated.
 
 test("(f-hook) Codex: config.toml contains the shared dcg hook + adapter generated from the same manifest", async () => {
-  // THROWAWAY-DEFAULT: Use TARGET_HOME's .codex/config.toml (generated by Step 0's install).
-  // Never reads or mutates real ~/.codex/config.toml.
-  const throwawayConfigPath = path.join(TARGET_HOME, ".codex", "config.toml");
-  const configExists = existsSync(throwawayConfigPath);
+  // The config.toml at ~/.codex/config.toml must exist (created/merged by install.sh)
+  const configExists = existsSync(CODEX_CONFIG_TOML_PATH);
   assert.ok(configExists,
-    `Codex config.toml must exist at ${throwawayConfigPath} (created by Step 0 install against TARGET_HOME)`);
+    `Codex config.toml must exist at ${CODEX_CONFIG_TOML_PATH} (created/merged by install.sh)`);
 
-  const configContent = await readFile(throwawayConfigPath, "utf8");
+  const configContent = await readFile(CODEX_CONFIG_TOML_PATH, "utf8");
 
   // Must contain the [hooks] section
   assert.match(configContent, /^\[hooks\]/m,
@@ -1200,10 +1199,10 @@ test("(f-hook) Codex: config.toml contains the shared dcg hook + adapter generat
     `Codex config.toml must have a Bash matcher in PreToolUse hooks (same source as CC settings.json)`);
 
   // The dcg adapter script must be referenced as the hook command
-  const dcgAdapterPath = path.join(TARGET_HOME, ".codex", "dcg-codex-hook.sh");
+  const dcgAdapterPath = path.join(HOME, ".codex", "dcg-codex-hook.sh");
   const adapterExists = existsSync(dcgAdapterPath);
   assert.ok(adapterExists,
-    `dcg adapter script must exist at ${dcgAdapterPath} (generated by install.sh into TARGET_HOME)`);
+    `dcg adapter script must exist at ${dcgAdapterPath} (generated by install.sh)`);
 
   // The adapter must be referenced in config.toml
   assert.ok(configContent.includes("dcg-codex-hook.sh"),
@@ -1226,7 +1225,7 @@ test("(f-hook) Codex: config.toml contains the shared dcg hook + adapter generat
     `Codex config.toml must have trusted_hash seeds (production trust mechanism — not bypass flag)`);
 
   // No stale hooks.toml (old-wiring artifact must be removed)
-  const staleHooksToml = path.join(TARGET_HOME, ".codex", "hooks.toml");
+  const staleHooksToml = path.join(HOME, ".codex", "hooks.toml");
   const staleExists = existsSync(staleHooksToml);
   assert.ok(!staleExists,
     `Stale ~/.codex/hooks.toml must NOT exist (Codex 0.137.0 reads hooks only from config.toml; hooks.toml is a stale artifact)`);
@@ -1237,34 +1236,40 @@ test("(f-hook) Codex: config.toml contains the shared dcg hook + adapter generat
 // ─── (f-skill) Codex skills: shared skill resolves ───────────────────────────
 
 test("(f-skill) Codex: shared skills resolve under Codex discovery root (~/.agents/skills)", async () => {
-  // THROWAWAY-DEFAULT: Use TARGET_HOME's .agents/skills symlink (installed by Step 0).
-  const throwawaySkillsRoot = path.join(TARGET_HOME, ".agents", "skills");
-  const skillsExists = existsSync(throwawaySkillsRoot);
+  // The Codex skills discovery root must exist as a compiled real directory (not a symlink).
+  // Skills with $SKILLS_ROOT placeholders are compiled with resolved paths — same compile
+  // transform as pi. A symlink would leave raw $SKILLS_ROOT tokens unresolved (Finding B fix).
+  const skillsExists = existsSync(CODEX_SKILLS_ROOT);
   assert.ok(skillsExists,
-    `Codex skills discovery root must exist at ${throwawaySkillsRoot} (installed into TARGET_HOME by Step 0)`);
+    `Codex skills discovery root must exist at ${CODEX_SKILLS_ROOT}`);
 
-  // Must be a symlink
-  const isLink = await exec(`test -L "${throwawaySkillsRoot}" && echo "yes" || echo "no"`)
+  // Must NOT be a symlink — it is a compiled directory tree with resolved placeholders.
+  const isLink = await exec(`test -L "${CODEX_SKILLS_ROOT}" && echo "yes" || echo "no"`)
     .then(({ stdout }) => stdout.trim() === "yes")
     .catch(() => false);
-  assert.ok(isLink,
-    `${throwawaySkillsRoot} must be a symlink (linking to dotpi agent/skills)`);
-
-  // Must resolve to dotpi agent/skills source
-  const resolved = await realpath(throwawaySkillsRoot);
-  const expectedSkillsSource = path.join(DOTPI_ROOT, "agent", "skills");
-  assert.equal(resolved, expectedSkillsSource,
-    `${throwawaySkillsRoot} must resolve to ${expectedSkillsSource}, got: ${resolved}`);
+  assert.ok(!isLink,
+    `${CODEX_SKILLS_ROOT} must be a compiled real directory (NOT a symlink) — raw $SKILLS_ROOT tokens would be unresolved if it were a symlink`);
 
   // The reference role's skill (design-pi-system) must be accessible under the skills root
-  const refSkillPath = path.join(throwawaySkillsRoot, "design-pi-system", "SKILL.md");
+  const refSkillPath = path.join(CODEX_SKILLS_ROOT, "design-pi-system", "SKILL.md");
   const refSkillExists = existsSync(refSkillPath);
   assert.ok(refSkillExists,
-    `Reference skill "design-pi-system/SKILL.md" must resolve under skills root at ${refSkillPath}`);
+    `Reference skill "design-pi-system/SKILL.md" must resolve under Codex skills root at ${refSkillPath}`);
+
+  // Skills bearing $SKILLS_ROOT must have the placeholder resolved — verify on decompose/SKILL.md
+  // which uses $SKILLS_ROOT/harness/recipes/compose.md as a peer-skill reference.
+  const decomposePath = path.join(CODEX_SKILLS_ROOT, "decompose", "SKILL.md");
+  if (existsSync(decomposePath)) {
+    const decomposeBody = await readFile(decomposePath, "utf8");
+    assert.ok(!decomposeBody.includes("$SKILLS_ROOT"),
+      `decompose/SKILL.md in Codex root must have $SKILLS_ROOT resolved (not literal token), got raw placeholder`);
+    assert.ok(!decomposeBody.includes("Task("),
+      `decompose/SKILL.md in Codex root must have CC dispatch lines stripped (no Task() literal)`);
+  }
 
   // The file-scanner role references "design-pi-system" skill — verify the TOML's
   // developer_instructions contains a reference to this skill (skills axis in effect)
-  const tomlPath = path.join(TARGET_HOME, ".codex", "agents", `${REF_ROLE_1}.toml`);
+  const tomlPath = path.join(CODEX_AGENTS_DIR, `${REF_ROLE_1}.toml`);
   if (existsSync(tomlPath)) {
     const tomlContent = await readFile(tomlPath, "utf8");
     // The role body from the markdown mentions "skills: design-pi-system" — this maps
@@ -1275,7 +1280,7 @@ test("(f-skill) Codex: shared skills resolve under Codex discovery root (~/.agen
       `TOML developer_instructions must contain role body (proof the brief was compiled into the TOML)`);
   }
 
-  console.log(`(f-skill) PASS: Shared skills resolve under Codex discovery root (TARGET_HOME/${throwawaySkillsRoot} → ${resolved}). design-pi-system skill accessible.`);
+  console.log(`(f-skill) PASS: Shared skills compiled (not symlinked) into Codex discovery root (${CODEX_SKILLS_ROOT}). $SKILLS_ROOT resolved, Task() stripped.`);
 });
 
 // ─── (f-skill-context) Non-circular skill auto-injection proof ────────────────
@@ -1287,24 +1292,17 @@ test("(f-skill) Codex: shared skills resolve under Codex discovery root (~/.agen
 // The non-circular proof: `codex debug prompt-input` emits the FULL context Codex would
 //   receive BEFORE any user prompt is sent. The shared skill (design-pi-system) is listed
 //   in the <skills_instructions> block because ~/.agents/skills/design-pi-system/ exists
-//   (symlinked from dotpi source by install.sh). This auto-injection happens WITHOUT the
-//   prompt mentioning the skill at all — that's the discriminating observable.
+//   (compiled from dotpi source by install.sh — a real directory, not a symlink). This
+//   auto-injection happens WITHOUT the prompt mentioning the skill at all — that's the
+//   discriminating observable.
 //
 // This test does NOT require auth credentials (debug command only).
 
-test("(f-skill-context) Codex: design-pi-system skill auto-injected in <skills_instructions> context without prompt mentioning it", async (t) => {
-  // THROWAWAY-DEFAULT: This test asserts that `codex debug prompt-input` reports
-  // the skill path under DOTPI_ROOT (harness) in the <skills_instructions> block.
-  // The skill path assertion requires ~/.agents/skills to be a symlink to the HARNESS
-  // source (not the old dotpi), which is only true after the f8l.8 live-home switchover.
-  // The structural proof that the skills symlink resolves correctly is covered by (f-skill).
-  // Deferred to f8l.8 live-home switchover.
-  t.skip("deferred to f8l.8 live-home switchover — ~/.agents/skills still points to old dotpi source; harness-path assertion requires live-home switchover; structural symlink proof covered by (f-skill)");
-  return;
-  // 1. Verify the skills root symlink is in place (prerequisite for auto-injection)
+test("(f-skill-context) Codex: design-pi-system skill auto-injected in <skills_instructions> context without prompt mentioning it", async () => {
+  // 1. Verify the skills root compiled directory is in place (prerequisite for auto-injection)
   const skillsRootResolved = await realpath(CODEX_SKILLS_ROOT).catch(() => null);
   assert.ok(skillsRootResolved !== null,
-    `${CODEX_SKILLS_ROOT} must be resolvable (symlink to dotpi agent/skills) before skills are auto-injected`);
+    `${CODEX_SKILLS_ROOT} must be resolvable (compiled skills dir) before skills are auto-injected`);
 
   const refSkillPath = path.join(CODEX_SKILLS_ROOT, "design-pi-system", "SKILL.md");
   assert.ok(existsSync(refSkillPath),
@@ -1387,15 +1385,17 @@ test("(f-skill-context) Codex: design-pi-system skill auto-injected in <skills_i
     `This is the NON-CIRCULAR proof: the skill appears here before any user prompt is sent.\n` +
     `Block (first 500 chars): ${skillsInstructionsText.slice(0, 500)}`);
 
-  // 5. Also assert the block references the skill's SKILL.md path from dotpi source
-  //    (cross-checks the symlink resolution is what Codex is reading)
-  const expectedSkillPath = path.join(DOTPI_ROOT, "agent", "skills", "design-pi-system", "SKILL.md");
+  // 5. Also assert the block references the skill's SKILL.md path from the compiled Codex skills root.
+  //    (Cross-checks that Codex reads from the compiled directory, not a stale or broken path.)
+  //    Now that ~/.agents/skills is a compiled real directory (not a symlink to dotpi source),
+  //    the path Codex reads is the compiled path under CODEX_SKILLS_ROOT.
+  const expectedSkillPath = path.join(CODEX_SKILLS_ROOT, "design-pi-system", "SKILL.md");
   assert.ok(skillsInstructionsText.includes(expectedSkillPath),
-    `<skills_instructions> must reference skill path "${expectedSkillPath}" (proves the symlink resolves to dotpi source).\n` +
+    `<skills_instructions> must reference skill path "${expectedSkillPath}" (proves Codex reads from compiled skills root).\n` +
     `Block excerpt: ${skillsInstructionsText.slice(skillsInstructionsText.indexOf("design-pi-system"), skillsInstructionsText.indexOf("design-pi-system") + 200)}`);
 
   console.log(`(f-skill-context) NON-CIRCULAR PROOF: design-pi-system auto-injected in <skills_instructions> block`);
-  console.log(`(f-skill-context) Skill path references dotpi source: ${expectedSkillPath}`);
+  console.log(`(f-skill-context) Skill path references compiled Codex skills root: ${expectedSkillPath}`);
   console.log(`(f-skill-context) PASS: skill loaded as role context WITHOUT prompt mentioning it — this is the discriminating observable`);
 });
 
@@ -1905,15 +1905,7 @@ const REPO_ROOT_CLAUDE_MD = path.join(DOTPI_ROOT, "CLAUDE.md");
 const GLOBAL_CLAUDE_MD = path.join(HOME, ".claude", "CLAUDE.md");
 const AGENT_AGENTS_MD = path.join(DOTPI_ROOT, "agent", "AGENTS.md");
 
-test("(a6c.10-pre) sentinel uniqueness: DOTPI-INSTR-RT-A6C10 absent from agent/AGENTS.md and the global agent instructions file", async (t) => {
-  // THROWAWAY-DEFAULT: The SENTINEL_TOKEN is a dotpi-repo-specific harness sentinel placed in
-  // the dotpi repo's CLAUDE.md → @AGENTS.md import chain (per DOTPI-INSTR-RT-A6C10 instruction).
-  // DOTPI_ROOT now resolves to the harness repo, which does NOT have this sentinel in its
-  // AGENTS.md — the sentinel lives in the dotpi repo (the consumer of harness).
-  // The (a6c.10) test series is dotpi-repo-specific infrastructure, not harness-level.
-  // Deferred to f8l.8 live-home switchover (when dotpi's AGENTS.md is served from harness).
-  t.skip("deferred to f8l.8 live-home switchover — SENTINEL_TOKEN is dotpi-repo-specific and not present in harness AGENTS.md; these tests verify the dotpi CC import chain, which runs from the dotpi repo, not harness");
-  return;
+test("(a6c.10-pre) sentinel uniqueness: DOTPI-INSTR-RT-A6C10 absent from agent/AGENTS.md and the global agent instructions file", async () => {
   // 1. Sentinel must be present in repo-root AGENTS.md
   const rootAgentsContent = await readFile(REPO_ROOT_AGENTS_MD, "utf8");
   assert.ok(rootAgentsContent.includes(SENTINEL_TOKEN),
@@ -1943,13 +1935,7 @@ test("(a6c.10-pre) sentinel uniqueness: DOTPI-INSTR-RT-A6C10 absent from agent/A
   console.log(`(a6c.10-pre) PASS: sentinel unique to repo-root AGENTS.md; absent from agent/AGENTS.md and the global agent instructions file`);
 });
 
-test("(a6c.10-positive) CC import chain: claude -p (cwd=repo-root) outputs sentinel DOTPI-INSTR-RT-A6C10", async (t) => {
-  // THROWAWAY-DEFAULT: This test spawns the real `claude` binary which reads from the real
-  // $CLAUDE_HOME. The `claude` binary does not reliably honor CLAUDE_CONFIG_DIR for all
-  // session state (auth, settings), so we cannot safely redirect it to TARGET_HOME.
-  // Deferred to f8l.8 live-home switchover.
-  t.skip("deferred to f8l.8 live-home switchover — claude binary reads real $CLAUDE_HOME and cannot be cleanly redirected; sentinel pre-check (a6c.10-pre) proves the chain exists structurally");
-  return;
+test("(a6c.10-positive) CC import chain: claude -p (cwd=repo-root) outputs sentinel DOTPI-INSTR-RT-A6C10", async () => {
   // Spawn claude -p with cwd=repo-root (CLAUDE.md → @AGENTS.md → sentinel in scope).
   // The sentinel token is placed in repo-root AGENTS.md as an instruction:
   //   "when asked 'ping-dotpi', respond with 'pong-DOTPI-INSTR-RT-A6C10'"
@@ -1995,11 +1981,7 @@ test("(a6c.10-positive) CC import chain: claude -p (cwd=repo-root) outputs senti
   console.log(`(a6c.10-positive) PASS: sentinel found in output — CLAUDE.md → @AGENTS.md import chain confirmed`);
 });
 
-test("(a6c.10-negative) CC import chain: claude -p (cwd=temp dir, no CLAUDE.md) does NOT output sentinel", async (t) => {
-  // THROWAWAY-DEFAULT: Same rationale as (a6c.10-positive) — spawns real `claude`.
-  // Deferred to f8l.8 live-home switchover.
-  t.skip("deferred to f8l.8 live-home switchover — claude binary reads real $CLAUDE_HOME; structural pre-check (a6c.10-pre) proves sentinel uniqueness");
-  return;
+test("(a6c.10-negative) CC import chain: claude -p (cwd=temp dir, no CLAUDE.md) does NOT output sentinel", async () => {
   // Spawn claude -p with cwd=a throwaway temp dir that has NO CLAUDE.md→@AGENTS.md chain.
   // The model must NOT output the sentinel (it has no access to it via any chain).
   // The same "ping-dotpi" prompt is used — the instruction to respond with the sentinel

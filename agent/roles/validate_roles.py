@@ -45,13 +45,22 @@ import sys
 import os
 import re
 
-# ── install yaml if needed ────────────────────────────────────────────────────
+# ── import yaml (pyyaml) ─────────────────────────────────────────────────────
 try:
     import yaml
 except ImportError:
-    import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml", "-q"])
-    import yaml
+    print(
+        "ERROR: pyyaml is not available in this Python interpreter.\n"
+        "Invoke this script via uv so that project dependencies are resolved:\n"
+        "\n"
+        "    uv run python agent/roles/validate_roles.py\n"
+        "\n"
+        "Or, to add it one-off:\n"
+        "\n"
+        "    uv run --with pyyaml python agent/roles/validate_roles.py",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 # ── constants ─────────────────────────────────────────────────────────────────
 ROLES_DIR = os.path.dirname(os.path.abspath(__file__))

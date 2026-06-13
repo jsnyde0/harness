@@ -1,6 +1,6 @@
 ---
 name: harness
-description: Design feedback infrastructure for a task or project. Use /harness to compose a harness for the current task, /harness compose to author a `## Harness target` block for a specific bead scope (invoked from bead-authoring primitives like /brainstorm and /decompose per ADR-005 D7), or /harness audit to scan a repo and produce a harness inventory. Also handles targeted additions to an existing inventory when the user knows something is missing. If the project has a `.claude/harness.md` file, that's the canonical inventory of verification mechanisms — consult it when picking a feedback loop. Triggers on "harness", "iteration target", "feedback loop", "what should I verify against", "how do I test this", "verification strategy", "harness target", "compose a harness target", "add X to the harness", "missing from harness.md", "this should be in our harness inventory".
+description: Design feedback infrastructure for a task or project. Use /harness to compose a harness for the current task, /harness compose to author a `## Harness target` block for a specific bead scope (invoked from bead-authoring primitives like /brainstorm and /decompose), or /harness audit to scan a repo and produce a harness inventory. Also handles targeted additions to an existing inventory when the user knows something is missing. If the project has a `.claude/harness.md` file, that's the canonical inventory of verification mechanisms — consult it when picking a feedback loop. Triggers on "harness", "iteration target", "feedback loop", "what should I verify against", "how do I test this", "verification strategy", "harness target", "compose a harness target", "add X to the harness", "missing from harness.md", "this should be in our harness inventory".
 ---
 
 # Harness Engineering
@@ -21,7 +21,7 @@ A harness is a **composed collection** of feedback mechanisms — not just one c
 Prefer the **fastest, most deterministic signal** available:
 
 ```
-FAST / DETERMINISTIC                              SLOW / SEMANTIC
+FAST / DETERMINISTIC SLOW / SEMANTIC
 ───────────────────────────────────────────────────────────────────→
 compile → typecheck → lint → unit test → integration → E2E → LLM judge → human
 ```
@@ -29,7 +29,7 @@ compile → typecheck → lint → unit test → integration → E2E → LLM jud
 ## Recipes
 
 - **[`/harness`](recipes/quick.md)** — Compose a harness for the current task. **Inventory-first:** before picking a signal, consult `.claude/harness.md` in the current project. If the inventory names a faster goal-faithful signal at the same or better altitude than what you'd propose cold, use that signal and cite the inventory entry in the Rationale. Push back against the inventory only when the faster signal genuinely doesn't capture the bead's intent — and name why. If no inventory exists, scan and propose; note the absence so the caller can decide whether to run `/harness audit` first.
-- **[`/harness compose`](recipes/compose.md)** — Author a `## Harness target` block for a specific bead scope, returning the four-predicate structure (Signal / Expected green / Rationale / Invalidation) per ADR-012 D3. The canonical surface invoked by bead-authoring primitives (`/brainstorm` at convergence, `/decompose` at child authoring) per ADR-005 D7. Caller is responsible for persisting the returned block to the bead's `--design` — `/harness compose` returns the block, it does not write to bead substrate.
+- **[`/harness compose`](recipes/compose.md)** — Author a `## Harness target` block for a specific bead scope, returning the four-predicate structure (Signal / Expected green / Rationale / Invalidation). The canonical surface invoked by bead-authoring primitives (`/brainstorm` at convergence, `/decompose` at child authoring). Caller is responsible for persisting the returned block to the bead's `--design` — `/harness compose` returns the block, it does not write to bead substrate.
 - **[`/harness audit`](recipes/audit.md)** — Scan a repo and produce (or update) the repo's `.claude/harness.md` inventory (always this path — nested as `.claude/.claude/harness.md` in the methodology home repo itself) of all available feedback mechanisms, structured with **per-category fit profiles** ("for X kind of work in this repo, prefer Y mechanism because Z"). One-time investment per repo that future sessions reference. Also covers targeted single-entry additions when the user points out something the scan missed.
 
 **Recipe-authoring note.** Both recipes consult substrate (bd memories, ADRs, CASSMS) before composing or scanning. When authoring or evolving a recipe step that says "consult substrate", document BOTH paths: the canonical `/recall` invocation AND surrogate reads (`bd memories <keyword>`, scan `docs/decisions/INDEX.md`) for execute-only subagent contexts where the `Skill` tool isn't available. See bd memory `skill-recipe-recall-surrogate-fallback` for the why.
@@ -42,10 +42,10 @@ When reviewing a `## Harness target` section, apply criteria **in this order** �
 2. **Presence** — section exists with all four predicate fields (Signal / Expected green / Rationale / Invalidation), each non-empty (a named-skip-with-rationale satisfies presence for trivial work).
 3. **Falsifiability** — Signal + Expected green together form a binary observable. "Tests pass" with no named test is not falsifiable. "grep returns non-empty matches in convergence-exit-contract region" is.
 4. **Fit vs inventory** — if `.claude/harness.md` names a faster goal-faithful signal at the same or better altitude, push back. The Rationale field should name why the chosen signal was preferred over the inventory alternative.
-5. **Rationale + Invalidation populated** — not templated. Rationale explains why this altitude best captures the design intent; Invalidation is signal-shaped (per ADR-008 D8 FIRM: no numeric thresholds, no "if tests fail" circular statements).
+5. **Rationale + Invalidation populated** — not templated. Rationale explains why this altitude best captures the design intent; Invalidation is signal-shaped — this is a hard rule: no numeric thresholds, no "if tests fail" circular statements.
 6. **Conjunction coverage** (for `/decompose` trees) — children's harness targets jointly cover the parent's harness target coverage. A parent whose Signal covers the full flow must have children whose individual Signals together span that flow.
 
-**Gradient, not proof.** These six criteria grade the Signal as a verification *proxy* — the hillclimbing gradient, not proof the bead is done. Even a perfectly aligned Signal covers only the executable slice of acceptance. Where the bead's acceptance carries prose no Signal can reach, a target whose framing implies green-Signal = acceptance-met is itself a finding: the Signal is necessary, not sufficient (done = harness green AND acceptance met, ADR-006 D4).
+**Gradient, not proof.** These six criteria grade the Signal as a verification *proxy* — the hillclimbing gradient, not proof the bead is done. Even a perfectly aligned Signal covers only the executable slice of acceptance. Where the bead's acceptance carries prose no Signal can reach, a target whose framing implies green-Signal = acceptance-met is itself a finding: the Signal is necessary, not sufficient (done = harness green AND acceptance met).
 
 ## Anti-Patterns
 

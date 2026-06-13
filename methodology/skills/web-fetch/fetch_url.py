@@ -123,7 +123,7 @@ class TextExtractor(HTMLParser):
 
 def direct_fetch(url: str, fmt: str) -> tuple[str | None, str]:
     current = validate_url(url)
-    with httpx.Client(timeout=TIMEOUT, follow_redirects=False, headers={"user-agent": "dotclaude-web-fetch/0.1"}) as client:
+    with httpx.Client(timeout=TIMEOUT, follow_redirects=False, headers={"user-agent": "harness-web-fetch/0.1"}) as client:
         for _ in range(5):
             resp = client.get(current)
             if resp.status_code in {301, 302, 303, 307, 308}:

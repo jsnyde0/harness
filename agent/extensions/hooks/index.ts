@@ -44,12 +44,14 @@ export default async function hooksRunner(pi: ExtensionAPI) {
     return;
   }
 
-  // Resolve $CLAUDE_HOME/ and ~/ prefixes in manifest script paths (non-mutating copy)
+  // Resolve $CLAUDE_HOME/ and ~/ prefixes in manifest script paths (non-mutating copy).
+  // CC-only entries (no piEvent) carry no `script` — leave those untouched so we
+  // never call resolveScriptPath on undefined.
   const resolvedManifest = {
     ...manifest,
     hooks: manifest.hooks.map((entry) => ({
       ...entry,
-      script: resolveScriptPath(entry.script),
+      script: entry.script ? resolveScriptPath(entry.script) : entry.script,
     })),
   };
 

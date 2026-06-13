@@ -925,5 +925,205 @@ class TestOnewayCheckAllTrackedScan(unittest.TestCase):
             )
 
 
+class TestDocsDecisionsBoundary(unittest.TestCase):
+    """
+    Boundary-presence guard: docs/decisions/ must remain EMPTY by design.
+
+    All methodology/mechanism ADRs are private and must never publish.
+    Any file matching ADR-*.md or INDEX.md under docs/decisions/ is a leak.
+    """
+
+    def _run_boundary_check(self, repo_root: Path) -> tuple[list, str]:
+        """
+        Run check_docs_decisions_boundary() via the importable API.
+        Returns (findings_list, output_string).
+        """
+        import importlib.util
+        import io
+        from contextlib import redirect_stdout, redirect_stderr
+
+        spec = importlib.util.spec_from_file_location(
+            "oneway_check_boundary", str(ENGINE_SCRIPT)
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            with redirect_stderr(buf):
+                findings = mod.check_docs_decisions_boundary(repo_root)
+        output = buf.getvalue()
+        return findings, output
+
+    def test_boundary_fires_on_adr_file(self):
+        """check_docs_decisions_boundary() returns a finding when ADR-*.md exists."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            decisions_dir = tmp_path / "docs" / "decisions"
+            decisions_dir.mkdir(parents=True)
+            fake_adr = decisions_dir / "ADR-999-fake.md"
+            fake_adr.write_text("fake test ADR body", encoding="utf-8")
+
+            findings, output = self._run_boundary_check(tmp_path)
+            self.assertTrue(
+                len(findings) > 0,
+                f"Boundary check must return a finding for ADR-999-fake.md.\n"
+                f"Output:\n{output}"
+            )
+            # Finding text must mention the offending file
+            finding_strs = [str(f) for f in findings]
+            self.assertTrue(
+                any("ADR-999-fake.md" in s for s in finding_strs),
+                f"Finding must mention ADR-999-fake.md.\nFindings: {finding_strs}"
+            )
+
+    def test_boundary_fires_on_index_file(self):
+        """check_docs_decisions_boundary() returns a finding when INDEX.md exists."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            decisions_dir = tmp_path / "docs" / "decisions"
+            decisions_dir.mkdir(parents=True)
+            index_file = decisions_dir / "INDEX.md"
+            index_file.write_text("fake test INDEX body", encoding="utf-8")
+
+            findings, output = self._run_boundary_check(tmp_path)
+            self.assertTrue(
+                len(findings) > 0,
+                f"Boundary check must return a finding for INDEX.md.\n"
+                f"Output:\n{output}"
+            )
+            finding_strs = [str(f) for f in findings]
+            self.assertTrue(
+                any("INDEX.md" in s for s in finding_strs),
+                f"Finding must mention INDEX.md.\nFindings: {finding_strs}"
+            )
+
+    def test_boundary_passes_when_decisions_absent(self):
+        """check_docs_decisions_boundary() returns no findings when docs/decisions/ is absent."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            # No docs/decisions/ dir created at all
+            findings, output = self._run_boundary_check(tmp_path)
+            self.assertEqual(
+                len(findings), 0,
+                f"Boundary check must return no findings when docs/decisions/ is absent.\n"
+                f"Output:\n{output}"
+            )
+
+    def test_boundary_passes_when_decisions_empty(self):
+        """check_docs_decisions_boundary() returns no findings when docs/decisions/ is empty."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            decisions_dir = tmp_path / "docs" / "decisions"
+            decisions_dir.mkdir(parents=True)
+            # No files created inside
+
+            findings, output = self._run_boundary_check(tmp_path)
+            self.assertEqual(
+                len(findings), 0,
+                f"Boundary check must return no findings when docs/decisions/ is empty.\n"
+                f"Output:\n{output}"
+            )
+
+    def test_boundary_non_adr_files_clean(self):
+        """check_docs_decisions_boundary() ignores non-ADR files (e.g. .gitkeep, README)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            decisions_dir = tmp_path / "docs" / "decisions"
+            decisions_dir.mkdir(parents=True)
+            (decisions_dir / ".gitkeep").write_text("", encoding="utf-8")
+            # A hypothetical non-ADR harness-specific file that might be added later
+            (decisions_dir / "HARNESS-NOTE.md").write_text(
+                "This dir is intentionally empty.", encoding="utf-8"
+            )
+
+            findings, output = self._run_boundary_check(tmp_path)
+            self.assertEqual(
+                len(findings), 0,
+                f"Boundary check must not fire on non-ADR files (.gitkeep, HARNESS-NOTE.md).\n"
+                f"Output:\n{output}"
+            )
+
+    def test_boundary_integrated_in_run_check_via_git_repo(self):
+        """
+        End-to-end: run_check() with a throwaway git repo returns a finding when
+        docs/decisions/ADR-999-fake.md is tracked.
+
+        This verifies the boundary guard is wired into the main run_check() flow
+        (not just callable as a standalone function).
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+
+            # Set up minimal manifest structure
+            manifest_dir = tmp_path / "manifest"
+            manifest_dir.mkdir()
+            manifest_path = manifest_dir / "core-manifest.toml"
+            manifest_path.write_text(
+                "# Throwaway synthetic manifest for boundary integration test\n",
+                encoding="utf-8",
+            )
+
+            # Plant an ADR file in docs/decisions/
+            decisions_dir = tmp_path / "docs" / "decisions"
+            decisions_dir.mkdir(parents=True)
+            (decisions_dir / "ADR-999-fake.md").write_text(
+                "fake test ADR body", encoding="utf-8"
+            )
+
+            # Markers config (no real tokens needed for the boundary check)
+            scripts_dir = tmp_path / "scripts"
+            scripts_dir.mkdir()
+            markers_config = scripts_dir / "synthetic-markers.toml"
+            markers_config.write_text(SYNTHETIC_MARKERS_TOML, encoding="utf-8")
+
+            # Init throwaway git repo and commit everything
+            subprocess.run(["git", "init", str(tmp_path)], capture_output=True, check=True)
+            subprocess.run(
+                ["git", "-C", str(tmp_path), "config", "user.email", "test@example.com"],
+                capture_output=True, check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(tmp_path), "config", "user.name", "Test"],
+                capture_output=True, check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(tmp_path), "add", "."],
+                capture_output=True, check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(tmp_path), "commit", "-m", "throwaway"],
+                capture_output=True, check=True,
+            )
+
+            import importlib.util
+            import io
+            from contextlib import redirect_stdout, redirect_stderr
+
+            spec = importlib.util.spec_from_file_location(
+                "oneway_check_integ", str(ENGINE_SCRIPT)
+            )
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                with redirect_stderr(buf):
+                    findings = mod.run_check(
+                        manifest_path=manifest_path,
+                        use_all_tracked=True,
+                        markers_config_path=markers_config,
+                    )
+            output = buf.getvalue()
+
+            boundary_findings = [f for f in findings if "BOUNDARY" in str(f)]
+            self.assertTrue(
+                len(boundary_findings) > 0 or any("ADR-999-fake.md" in str(f) for f in findings),
+                f"run_check() must report a finding for docs/decisions/ADR-999-fake.md.\n"
+                f"All findings: {findings}\n"
+                f"Output:\n{output}"
+            )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

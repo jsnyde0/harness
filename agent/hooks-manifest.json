@@ -18,17 +18,6 @@
       "matcher": "Bash",
       "piEvent": "tool_call",
       "toolNames": ["bash"],
-      "script": "$CLAUDE_HOME/hooks/block-compound-commands.sh",
-      "scriptArgs": [],
-      "inputArgField": null,
-      "outputFormat": "cc-hook",
-      "description": "Block compound commands (&&, ;, ||) on pi bash tool calls."
-    },
-    {
-      "ccEvent": "PreToolUse",
-      "matcher": "Bash",
-      "piEvent": "tool_call",
-      "toolNames": ["bash"],
       "script": "$CLAUDE_HOME/hooks/block-sensitive-bash.sh",
       "scriptArgs": [],
       "inputArgField": null,
@@ -52,6 +41,15 @@
       "ccHooks": [
         { "type": "command", "command": "bd prime" }
       ]
+    },
+    {
+      "ccEvent": "SessionStart",
+      "piEvent": "before_agent_start",
+      "toolNames": [],
+      "script": "$DOTPI_AGENT_DIR/extensions/hooks/brain-of-loop.sh",
+      "scriptArgs": [],
+      "outputFormat": "system-prompt-append",
+      "description": "Brain-of-loop posture injection: pi before_agent_start hook appends orchestrator framing to the system prompt. CC analog: brain-of-loop.sh is part of the CC SessionStart hook bundle."
     },
     {
       "ccEvent": "SessionStart",

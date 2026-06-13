@@ -6,7 +6,7 @@ description: Fetch one public HTTP/HTTPS URL as bounded untrusted content via a 
 # Web fetch
 
 ```bash
-uv run --directory $HOME/.claude/skills/web-fetch python fetch_url.py <url> [flags]
+uv run --directory $SKILL python fetch_url.py <url> [flags]
 ```
 
 Output is bounded and wrapped in `--- BEGIN UNTRUSTED WEB CONTENT ---` markers.

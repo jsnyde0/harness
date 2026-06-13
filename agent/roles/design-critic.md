@@ -1,6 +1,6 @@
 ---
 name: design-critic
-description: Use during /beadify-v2 Phase C to audit the whole canonical bead graph before materialize. Reports findings only; does not restructure or write beads.
+description: Audit the whole canonical bead graph before materialize. Reports findings only; does not restructure or write beads.
 tools: Read, Grep
 model: opus
 pi-model: openrouter/openai/gpt-4.5

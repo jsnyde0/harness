@@ -28,13 +28,14 @@ import path from "node:path";
 /**
  * Resolve script path prefixes to absolute paths.
  *
- * Handles two portable prefix conventions:
- *   $CLAUDE_HOME/<rest> → <homedir>/.claude/<rest>
- *   ~/<rest>            → <homedir>/<rest>
+ * Handles portable prefix conventions:
+ *   $CLAUDE_HOME/<rest>    → <homedir>/.claude/<rest>
+ *   $DOTPI_AGENT_DIR/<rest>→ <homedir>/.pi/agent/<rest>
+ *   ~/<rest>               → <homedir>/<rest>
  *
  * Plain binaries (e.g. "dcg") and absolute paths pass through unchanged.
- * $CLAUDE_HOME is unset in every shell at runtime — resolving it here
- * ensures pi.exec receives an absolute path.
+ * $CLAUDE_HOME and $DOTPI_AGENT_DIR are unset in every shell at runtime —
+ * resolving them here ensures pi.exec receives an absolute path.
  *
  * @param {string} script
  * @returns {string}
@@ -42,6 +43,9 @@ import path from "node:path";
 export function resolveScriptPath(script) {
   if (script.startsWith("$CLAUDE_HOME/")) {
     return path.join(os.homedir(), ".claude", script.slice("$CLAUDE_HOME/".length));
+  }
+  if (script.startsWith("$DOTPI_AGENT_DIR/")) {
+    return path.join(os.homedir(), ".pi", "agent", script.slice("$DOTPI_AGENT_DIR/".length));
   }
   if (script.startsWith("~/")) {
     return path.join(os.homedir(), script.slice(2));
@@ -110,19 +114,22 @@ function buildBlockReason(result, parsed) {
 /**
  * Protocol adapters — table-driven enum: outputFormat → adapter function.
  *
- * Each adapter receives (result, entry) and returns {block:true, reason} or undefined.
+ * Each adapter receives (result, entry, event) and returns a result appropriate for the event type,
+ * or undefined on allow/no-op.
  * Adding a new hook that uses an existing protocol requires ZERO code changes here.
  * Adding a NEW protocol requires adding one entry to this map.
  *
  * outputFormat values:
- *   undefined / "exit-code" — default: non-zero exit → block
- *   "json"                  — dcg protocol: stdout JSON with decision:"deny" → block (fallthrough to exit-code)
- *   "cc-hook"               — Claude Code hook protocol: stdout JSON with
- *                             hookSpecificOutput.permissionDecision:"deny"|"ask" → block;
- *                             exit code 2 or non-zero → block; exit 0 + no deny → allow
+ *   undefined / "exit-code"      — default: non-zero exit → block (tool_call)
+ *   "json"                       — dcg protocol: stdout JSON with decision:"deny" → block (fallthrough to exit-code)
+ *   "cc-hook"                    — Claude Code hook protocol: stdout JSON with
+ *                                  hookSpecificOutput.permissionDecision:"deny"|"ask" → block;
+ *                                  exit code 2 or non-zero → block; exit 0 + no deny → allow
+ *   "system-prompt-append"       — before_agent_start protocol: stdout text appended to event.systemPrompt;
+ *                                  non-zero exit → undefined (skip, never block session start)
  */
 
-/** @type {Record<string, (result: import("./types.mjs").ExecResult, parsed: unknown) => {block:true, reason:string}|undefined>} */
+/** @type {Record<string, (result: import("./types.mjs").ExecResult, parsed: unknown, event?: unknown) => unknown>} */
 const OUTPUT_ADAPTERS = {
   /**
    * dcg-json protocol: stdout JSON with decision:"deny" → block.
@@ -134,6 +141,36 @@ const OUTPUT_ADAPTERS = {
     }
     // Fall through to exit-code check
     return undefined;
+  },
+
+  /**
+   * system-prompt-append protocol: before_agent_start injection.
+   * - Exit 0: append stdout to event.systemPrompt, return { systemPrompt: combined }
+   * - Non-zero exit: return undefined (skip injection; never block session start)
+   *
+   * @param {import("./types.mjs").ExecResult} result
+   * @param {unknown} _parsed
+   * @param {unknown} event - the before_agent_start event with .systemPrompt
+   */
+  "system-prompt-append"(result, _parsed, event) {
+    if (result.code !== 0 || result.killed) {
+      return undefined; // Skip; never block session start
+    }
+    const injectedText = result.stdout.trim();
+    if (!injectedText) return undefined;
+    // SINGLE-HANDLER ASSUMPTION: reads event.systemPrompt, which reflects the
+    // value at the time this handler was called. If a second before_agent_start
+    // handler is ever added, each handler sees the ORIGINAL event.systemPrompt
+    // (pi does not thread-update the event between handlers), so only the last
+    // handler's injection survives — earlier injections are silently dropped.
+    // Multi-handler chaining would require a reduce pass over ordered handlers
+    // (accumulating systemPrompt across results) or pi runtime cooperation
+    // (pi updating event.systemPrompt after each handler returns). Today there
+    // is exactly one system-prompt-append handler, so this does not bite.
+    const currentPrompt = (event && typeof event === "object" && typeof event.systemPrompt === "string")
+      ? event.systemPrompt
+      : "";
+    return { systemPrompt: currentPrompt + "\n\n" + injectedText };
   },
 
   /**
@@ -182,7 +219,6 @@ export function wireManifest(pi, manifest, options = {}) {
     const {
       piEvent,
       toolNames,
-      script,
       scriptArgs = [],
       inputArgField,
       outputFormat,
@@ -192,6 +228,12 @@ export function wireManifest(pi, manifest, options = {}) {
     if (!piEvent || typeof piEvent !== "string") {
       continue;
     }
+
+    // Resolve prefix tokens ($CLAUDE_HOME/, $DOTPI_AGENT_DIR/, ~/) to absolute paths.
+    // The manifest uses portable prefixes; these env vars are unset at pi runtime.
+    // Plain binaries (e.g. "dcg") and absolute paths pass through unchanged.
+    // Must be called after the CC-only guard: CC-only entries have no script field.
+    const script = resolveScriptPath(entry.script);
 
     pi.on(piEvent, async (event, _ctx) => {
       // Table-driven toolNames filter:
@@ -229,11 +271,11 @@ export function wireManifest(pi, manifest, options = {}) {
       const adapter = outputFormat != null ? OUTPUT_ADAPTERS[outputFormat] : undefined;
       if (adapter) {
         const parsed = tryParseJson(result.stdout);
-        const adapterResult = adapter(result, parsed);
+        const adapterResult = adapter(result, parsed, event);
         if (adapterResult) return adapterResult;
         // Adapters that don't return a block result may still fall through to exit-code check.
-        // cc-hook handles its own exit-code check inside the adapter, so we only fall through for "json".
-        if (outputFormat === "cc-hook") return undefined;
+        // cc-hook and system-prompt-append handle their own exit-code checks, so we don't fall through.
+        if (outputFormat === "cc-hook" || outputFormat === "system-prompt-append") return undefined;
       }
 
       // Exit-code protocol (default + json fallthrough): non-zero exit → block

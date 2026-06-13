@@ -3,10 +3,10 @@
 ## The Spectrum
 
 ```
-FAST / DETERMINISTIC                              SLOW / SEMANTIC
+FAST / DETERMINISTIC SLOW / SEMANTIC
 ───────────────────────────────────────────────────────────────────→
 compile → typecheck → lint → unit test → integration → E2E → LLM judge → human
-        (milliseconds)           (seconds)            (minutes)
+ (milliseconds) (seconds) (minutes)
 ```
 
 ## Computational vs. Inferential (Fowler)
@@ -50,7 +50,7 @@ Result: 66.5% vs 53.9% at constant xhigh (due to timeouts) and 63.6% at constant
 
 "Agents write the code; linters write the law."
 
-Instead of using linters as downstream QA, make them the primary iteration target. In Factory.ai's framing, lint green = definition of Done. (In *our* substrate this is the gradient, not the finish line: lint/Signal green is the hillclimbing target you iterate against, necessary-not-sufficient — done = harness green AND acceptance met, including the prose remainder no linter reaches. See ADR-006 D4.) Seven domains: grep-ability, glob-ability, architectural boundaries, security, testability, observability, documentation signals.
+Instead of using linters as downstream QA, make them the primary iteration target. In Factory.ai's framing, lint green = definition of Done. (In *our* substrate this is the gradient, not the finish line: lint/Signal green is the hillclimbing target you iterate against, necessary-not-sufficient — done = harness green AND acceptance met, including the prose remainder no linter reaches.) Seven domains: grep-ability, glob-ability, architectural boundaries, security, testability, observability, documentation signals.
 
 The migration engine pattern: encode legacy patterns (detectable) and target APIs (required) → agent-driven large refactors.
 

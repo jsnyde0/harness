@@ -1,6 +1,6 @@
 ---
 name: design-scout
-description: Use during /beadify-v2 Phase A to propose a child-bead tree for a decomposed epic. Proposes structure only; does not write acceptance text.
+description: Propose a child-bead tree for a decomposed epic. Proposes structure only; does not write acceptance text.
 tools: Read, Grep
 model: sonnet
 pi-model: openrouter/openai/gpt-4.1

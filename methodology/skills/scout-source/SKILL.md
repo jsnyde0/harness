@@ -29,12 +29,12 @@ Agent-judgment-routed. Strong triggers:
 ## Invocation surface
 
 ```
-/scout-source <question>                          # resolve the source from context
-/scout-source <question> --repo <git-url>         # explicit upstream repo
+/scout-source <question> # resolve the source from context
+/scout-source <question> --repo <git-url> # explicit upstream repo
 /scout-source <question> --pkg <npm-or-pypi-name> # resolve repo from the package registry
-/scout-source <question> --path <subdir>          # narrow search to a subdir (the "searchPath" trick)
-/scout-source <question> --ref <branch|tag|sha>   # pin to a version; default = default branch
-/scout-source <question> --hint "<note>"          # interpretation hint for the worker (the "specialNotes" trick)
+/scout-source <question> --path <subdir> # narrow search to a subdir (the "searchPath" trick)
+/scout-source <question> --ref <branch|tag|sha> # pin to a version; default = default branch
+/scout-source <question> --hint "<note>" # interpretation hint for the worker (the "specialNotes" trick)
 ```
 
 One verb. Flags are worker-brief context, not subcommands. Bare `/scout-source` with no question = list previously-cached sources (startup state, below).
@@ -44,19 +44,19 @@ One verb. Flags are worker-brief context, not subcommands. Bare `/scout-source` 
 *Before resolving — a judgment cue, not a gate:* would current docs settle this? If yes and nothing about the question demands source-of-truth, say so up front — the cheaper path (`context7`) is usually right, and noticing this *before* a clone beats noting it in a caveat after. Clone when source is genuinely the authority (docs stale/wrong/absent, exact-signature-from-source, behavior contradicts docs) or the user clearly wants the source read. On an explicit invocation, trust the user — a one-line "context7 would likely answer this cheaper" is good hygiene, not a reason to refuse.
 
 1. **Resolve the source** (cheapest path that works):
-   - `--repo <url>` → use it directly.
-   - `--pkg <name>` → resolve the repo URL: `npm view <name> repository.url` (npm) or PyPI `Project-URL`/`Home-page`. Strip `git+`/`.git`.
-   - **Already installed locally** → if the dependency is in this project's `node_modules/<name>`, `.venv`/site-packages, or a vendored dir, **read that instead of cloning** — it's the exact version in use and costs nothing. Prefer this when the question is "what does the version I'm running do".
-   - **Infer from context** → if none given, guess from the question + the project's manifest (`package.json`, `pyproject.toml`). If genuinely ambiguous, ask one line; don't clone the wrong repo.
+ - `--repo <url>` → use it directly.
+ - `--pkg <name>` → resolve the repo URL: `npm view <name> repository.url` (npm) or PyPI `Project-URL`/`Home-page`. Strip `git+`/`.git`.
+ - **Already installed locally** → if the dependency is in this project's `node_modules/<name>`, `.venv`/site-packages, or a vendored dir, **read that instead of cloning** — it's the exact version in use and costs nothing. Prefer this when the question is "what does the version I'm running do".
+ - **Infer from context** → if none given, guess from the question + the project's manifest (`package.json`, `pyproject.toml`). If genuinely ambiguous, ask one line; don't clone the wrong repo.
 2. **Apply narrowing + hints** — `--path` limits the search surface (e.g. `packages/effect/src` in a monorepo); `--hint` tells the worker how to read the repo ("docs live in `content/`, ignore generated `dist/`"). Both reduce noise and token cost.
-3. **Dispatch ONE fresh-context subagent** (`Task(subagent_type=general-purpose)`, inherit model — source comprehension wants a capable model, *not* haiku). Hand it the full brief below. This is the token-volume step: the clone, the grep sweep, the file reads all happen in the worker's window, never yours — you receive only the distilled answer. **Fallback:** if you are *already* a dispatched fresh-context worker (e.g. a `/send-it` worker invoked this skill) or no `Task` dispatch surface is available, you ARE the runtime — execute the brief inline instead of nesting a second dispatch. The discipline ADR-007 D3 anchors is "the search runs in a fresh-context window, not the orchestrator's"; being the worker already satisfies it, so a nested dispatch would be redundant, not more compliant.
+3. **Dispatch ONE fresh-context subagent** (`Task(subagent_type=general-purpose)`, inherit model — source comprehension wants a capable model, *not* haiku). Hand it the full brief below. This is the token-volume step: the clone, the grep sweep, the file reads all happen in the worker's window, never yours — you receive only the distilled answer. **Fallback:** if you are *already* a dispatched fresh-context worker (e.g. a `/send-it` worker invoked this skill) or no `Task` dispatch surface is available, you ARE the runtime — execute the brief inline instead of nesting a second dispatch. The discipline anchors is "the search runs in a fresh-context window, not the orchestrator's"; being the worker already satisfies it, so a nested dispatch would be redundant, not more compliant.
 4. **Return the answer to the caller.** No substrate writes. Surface the commit SHA so the answer is auditable and its freshness is legible.
 
 ## Subagent brief (the worker is the "program runtime")
 
 > You are answering a question about a third-party library by reading its **actual source**, not from memory. Memory is stale and may be wrong — trust only what you read in the repo.
 >
-> **Source:** `<resolved repo url | local path>`  **Ref:** `<ref or "default branch">`  **Narrow to:** `<--path or "whole repo">`  **Hint:** `<--hint or none>`
+> **Source:** `<resolved repo url | local path>` **Ref:** `<ref or "default branch">` **Narrow to:** `<--path or "whole repo">` **Hint:** `<--hint or none>`
 >
 > **Steps:**
 > 1. If a local installed copy was named, read it directly. Otherwise shallow-clone to the cache: `git clone --depth 1 [--branch <ref>] <url> $HOME/.claude/.cache/scout-source/<safe-name>` — if it's already cached, `git pull` to update (or reuse if `--ref` pins a tag/sha). Record the resolved commit SHA (`git -C <dir> rev-parse --short HEAD`).
@@ -128,5 +128,5 @@ The entire value is *re-derivation against live source*. Library APIs are the ca
 
 - scout-adrs/SKILL.md (methodology home) — sibling inward source-of-truth (our decisions); same fresh-dispatch-and-return shape.
 - scout-features/SKILL.md (methodology home) — sibling outward scout (competitor products).
-- ADR-007 D3 — fresh-`Task()` per dispatch; the token-volume search lives in the worker's window, not the orchestrator's (brain-of-loop discipline).
+
 - Provenance: distilled from `davis7dotsh/better-context` `skills/btca-local/SKILL.md` (the "clone → point agent → ask → answer" loop) and the "Thin Harness, Fat Skills" framing — the skill IS the program; the agent is its runtime.

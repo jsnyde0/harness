@@ -15,115 +15,12 @@
 # browser-automation appears once (agent/skills/browser-automation — the real source).
 
 # ---------------------------------------------------------------------------
-# ADRs — merged from both source homes
-# mechanism ADRs (001-003, originally from dotpi)
-# methodology ADRs (004-014, originally from the Claude Code home)
+# ADRs — NONE published. All methodology/mechanism ADRs are private-by-default
+# in the source manifest and do NOT cross the publish boundary. docs/decisions/
+# is empty by design; the leak-gate's boundary-presence guard fails if any ADR
+# file appears here. (Run 1, 2026-06-13: 15 private ADR copies that had leaked
+# into this tree were pruned and this stale "core" ADR block was removed.)
 # ---------------------------------------------------------------------------
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-001-minimal-pi-subagent-subprocess-primitive.md"
-disposition = "core"
-rationale = "Mechanism ADR for pi subagent subprocess primitive."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-002-cross-harness-substrate.md"
-disposition = "core"
-rationale = "Mechanism ADR for cross-harness substrate and thin-waist architecture."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-003-factory-orchestration-model.md"
-disposition = "core"
-rationale = "Mechanism ADR for factory/orchestration model."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-004-soldier-proof-skill.md"
-disposition = "core"
-rationale = "Meta-ADR governing the soldier-proof skill design; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-005-beadify-redesign.md"
-disposition = "core"
-rationale = "Meta-ADR governing beadify workflow skill; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-006-workflow-modernization.md"
-disposition = "core"
-rationale = "Meta-ADR governing workflow modernization decisions; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-007-primitive-loop.md"
-disposition = "core"
-rationale = "Meta-ADR for the primitive loop design; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-008-adr-predicates-and-plan.md"
-disposition = "core"
-rationale = "Meta-ADR governing ADR predicate and plan conventions; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-009-loop-composability.md"
-disposition = "core"
-rationale = "Meta-ADR for loop composability; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-010-beadify-v2-text-until-convergence.md"
-disposition = "core"
-rationale = "Meta-ADR for beadify-v2 text-until-convergence design; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-011-adrs-reflect-target-architecture.md"
-disposition = "core"
-rationale = "Meta-ADR governing ADR authoring conventions; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-012-substrate-thick-process-thin.md"
-disposition = "core"
-rationale = "Meta-ADR for substrate-thick / process-thin architecture principle; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-013-memory-layer-architecture.md"
-disposition = "core"
-rationale = "Meta-ADR for memory layer architecture (L2A/L2B/etc.); cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/ADR-014-bd-storage-model.md"
-disposition = "core"
-rationale = "Meta-ADR for bd storage model; cross-harness methodology."
-
-[[assets]]
-class = "adr"
-home = "harness"
-path = "docs/decisions/INDEX.md"
-disposition = "core"
-rationale = "Merged ADR index for the harness repo; navigational companion to the core ADRs."
 
 # ---------------------------------------------------------------------------
 # SKILLS — methodology/skills/ (CC-home origin, core)

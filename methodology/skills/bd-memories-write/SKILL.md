@@ -1,13 +1,13 @@
 ---
 name: bd-memories-write
-description: Reference discipline for writing entries to bd memories (L2B non-decaying agent-knowledge substrate per ADR-013 D2/D8) — frontmatter convention, structured body (Why/How-to-apply), kind/scope/source semantics, tiebreak rules, and worked examples. Use before calling `bd remember --key=...`, when /compound routes a Record entry to L2B (target: L2B), or when writing any procedural-lesson, anti-pattern, user-pref, project-anchor, or reference entry.
+description: Reference discipline for writing entries to bd memories (L2B non-decaying agent-knowledge substrate) — frontmatter convention, structured body (Why/How-to-apply), kind/scope/source semantics, tiebreak rules, and worked examples. Use before calling `bd remember --key=...`, when /compound routes a Record entry to L2B (target: L2B), or when writing any procedural-lesson, anti-pattern, user-pref, project-anchor, or reference entry.
 ---
 
 ## Purpose
 
 bd memories (L2B) is the non-decaying agent-knowledge substrate. Entries persist indefinitely; no half-life. The CLI does not enforce schema — the discipline lives entirely in the body content. This skill is the body-convention reference.
 
-**Spec source:** the memory-write redesign epic D2; ADR-013 D8 (kind enum).
+**Spec source:** the memory-write redesign epic D2; the memory layer architecture ADR defines the kind enum.
 
 ---
 
@@ -210,9 +210,6 @@ bd remember --key=some_lesson "Always use uv. User told me. Very important."
 
 ## Canonical refs
 
-- [ADR-013](docs/decisions/ADR-013-memory-layer-architecture.md) D2 — architectural source for bd memories body convention
-- [ADR-013](docs/decisions/ADR-013-memory-layer-architecture.md) D8 — kind enum (extended with `user-pref`, `project-anchor`, `reference` by the memory-write redesign epic)
-- [ADR-013](docs/decisions/ADR-013-memory-layer-architecture.md) D9 — impl-agnostic architecture spec; bd memories is the Claude Code binding for L2B
 - compound/SKILL.md (methodology home) — primary consumer of L2B entries; Record→L2B routing path produces output that must follow this convention
 - memory-write redesign epic — bead that brought this skill into being (D2 is the spec source)
-- `source:` frontmatter field added 2026-06-03, adapted from Golem XIV's knowledge-graph provenance (`actualizes` edge pins every fact to its originating cognition). Field convention is skill-local; ADR-013 D2/D8 delegate frontmatter spec to this skill, so no ADR edit was required.
+- `source:` frontmatter field added 2026-06-03, adapted from Golem XIV's knowledge-graph provenance (`actualizes` edge pins every fact to its originating cognition). Field convention is skill-local; the memory layer architecture ADR delegates frontmatter spec to this skill, so no ADR edit was required.

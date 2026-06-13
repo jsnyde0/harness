@@ -1,6 +1,6 @@
 ---
 name: design-refiner
-description: Use during /beadify-v2 Phase B to write the --acceptance text for one slot in the canonical bead graph. Writes acceptance only; does not restructure.
+description: Write the --acceptance text for one slot in the canonical bead graph. Writes acceptance only; does not restructure.
 tools: Read, Grep
 model: sonnet
 pi-model: openrouter/openai/gpt-4.1

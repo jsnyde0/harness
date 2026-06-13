@@ -31,8 +31,8 @@ You are the **manager**. You orchestrate the iteration loop, triage findings, an
 Extract from `$ARGUMENTS`:
 
 1. **skill-path** — first token (or only non-flag argument). Required.
-   - Resolve to absolute path: if relative, resolve from the current working directory.
-   - Validate the file exists. If it does not exist, **stop and report the path that was tried** — do not proceed with a missing skill.
+ - Resolve to absolute path: if relative, resolve from the current working directory.
+ - Validate the file exists. If it does not exist, **stop and report the path that was tried** — do not proceed with a missing skill.
 2. **--iterations N** — if present, extract N as integer. Default: 3.
 3. **--model** — if present, extract the model name that follows it (e.g. `haiku`). Store as `clarity_model`. If absent, leave unset.
 4. **--baseline** — if present, set `run_baseline = true`. If absent, set `run_baseline = false`. When true, a naive agent (no skill content) is dispatched on iteration 1 only alongside the skilled agent; the review agent adds a "Baseline comparison" section for iteration 1. No baseline run is dispatched on iterations 2..N.
@@ -66,9 +66,9 @@ Store this table in memory as `coverage_record`. It is the authoritative record 
 
 - Identify the skill's description, intended use cases, decision branches, and any examples
 - Derive **2–3 test prompts** that cover different parts of the skill's intended scope:
-  - Target different branches or phases of the skill
-  - Vary difficulty and context (not just rephrasings of the same scenario)
-  - At least one prompt should exercise an edge case or less-obvious path
+ - Target different branches or phases of the skill
+ - Vary difficulty and context (not just rephrasings of the same scenario)
+ - At least one prompt should exercise an edge case or less-obvious path
 
 **Prompt count guidance:** If the user provides fewer than 2 prompts, derive additional prompts to reach at least 2. If the user provides more than 3, use the first 3 or ask which to prioritize.
 
@@ -90,11 +90,11 @@ Maintain this structure across all iterations:
 
 ```
 For iteration = 1 to N:
-  Step 1: Dispatch test agent
-  Step 2: Extract transcript
-  Step 3: Dispatch review agent
-  Step 4: Triage findings with user
-  Step 5: Apply trivially-safe fixes before next iteration
+ Step 1: Dispatch test agent
+ Step 2: Extract transcript
+ Step 3: Dispatch review agent
+ Step 4: Triage findings with user
+ Step 5: Apply trivially-safe fixes before next iteration
 ```
 
 #### Step 1: Dispatch test agent
@@ -181,10 +181,10 @@ JSONL: {jsonl_path}
 ## ADR check (conditional)
 Check whether ADR files exist at `{repo_root}/docs/decisions/` (absolute path).
 - If ADRs exist: read any that are relevant to the skill's domain or the test prompt.
-  For each proposal you make, check whether it conflicts with a FIRM ADR decision.
-  If it does, flag it explicitly: "CONFLICTS WITH ADR-NNN: [what the ADR decided]"
-  A conflict doesn't mean the proposal is wrong — the ADR may need updating — but
-  it MUST be surfaced, never silently overridden.
+ For each proposal you make, check whether it conflicts with a FIRM ADR decision.
+ If it does, flag it explicitly: "CONFLICTS WITH ADR-NNN: [what the ADR decided]"
+ A conflict doesn't mean the proposal is wrong — the ADR may need updating — but
+ it MUST be surfaced, never silently overridden.
 - If no ADRs exist or the path does not exist: skip this step entirely.
 
 ## Compliance dimension (D6 FIRM)
@@ -197,10 +197,10 @@ Did the test agent follow the skill's prescribed steps?
 Was the output good, independent of whether the agent followed the skill?
 - Did the output meet the success criteria implied by the test prompt?
 - Diagnostic matrix:
-  - Compliant + good output → skill working, no change needed
-  - Compliant + bad output → skill guidance is wrong, fix the instructions
-  - Non-compliant + good output → skill isn't compelling/clear enough
-  - Non-compliant + bad output → skill has gaps and agent improvised poorly
+ - Compliant + good output → skill working, no change needed
+ - Compliant + bad output → skill guidance is wrong, fix the instructions
+ - Non-compliant + good output → skill isn't compelling/clear enough
+ - Non-compliant + bad output → skill has gaps and agent improvised poorly
 
 ## Per-assertion grading (augments quality dimension — do not replace it)
 This section augments the quality dimension above; the narrative quality judgment
@@ -211,9 +211,9 @@ For each assertion, output a grading block:
 - **Assertion:** "{assertion text}"
 - **Result:** PASS or FAIL
 - **Evidence:** quoted transcript excerpt or specific observation supporting the verdict.
-  Evidence MUST be concrete — a direct quote from the transcript, a tool call observed,
-  or a specific output artifact. Do not give the benefit of the doubt; require concrete
-  evidence for a PASS.
+ Evidence MUST be concrete — a direct quote from the transcript, a tool call observed,
+ or a specific output artifact. Do not give the benefit of the doubt; require concrete
+ evidence for a PASS.
 
 Organize as a numbered list. End with a summary line: "Assertions: X/Y passed."
 
@@ -229,9 +229,9 @@ Read both the skilled transcript and the naive baseline transcript. Produce a
 - A brief characterization of the naive agent's output (what did it do without the skill?)
 - A verdict: did the skilled agent meaningfully outperform the naive agent?
 - Specific differences in approach, completeness, or output quality, with quoted evidence
-  from both transcripts.
+ from both transcripts.
 - If the skill added no meaningful lift, flag this prominently — it may indicate the skill
-  is not providing useful guidance or the test prompt is too easy.
+ is not providing useful guidance or the test prompt is too easy.
 
 This section appears only for iteration 1 when --baseline is active.
 
@@ -349,8 +349,8 @@ After triage, update the `coverage_record` for this iteration:
 
 1. For each branch in the `coverage_record`, determine whether this iteration's test agent exercised it. A branch is exercised if the transcript shows the agent taking the corresponding path or producing output relevant to that branch.
 2. For every exercised branch that was previously untested (`iteration_tested` = `—`):
-   - Set `iteration_tested` to the current iteration number (e.g. `1`)
-   - Set `evidence` to an ADR-008 D5 citation: transcript filename + line number (e.g. `sp-transcript-20260428-1430-1.md:L42`) or document filename + section ID if the finding traces to a design doc
+ - Set `iteration_tested` to the current iteration number (e.g. `1`)
+ - Set `evidence` to an citation: transcript filename + line number (e.g. `sp-transcript-20260428-1430-1.md:L42`) or document filename + section ID if the finding traces to a design doc
 3. Branches that were already tested in a prior iteration: do NOT overwrite their record — first-test iteration is the canonical one.
 4. Branches not exercised this iteration remain with their current values unchanged.
 
@@ -387,7 +387,7 @@ After each clarity probe run, the review agent categorizes each failure as one o
 
 The goal is not to make the smaller model succeed. It is to find clarity issues that smarter models paper over. Do not propose changes that dumb down the skill to accommodate capability limits.
 
-After each clarity probe run, update `coverage_record` following Step 4b — number each clarity-probe iteration continuing from the Phase 4 count (e.g. if Phase 4 ran 3 iterations, label the first clarity-probe run iteration 4) — if the clarity-probe agent exercised a branch not yet tested, record the iteration number and an ADR-008 D5 evidence citation (transcript filename + line number); first-test iteration remains canonical and must not be overwritten.
+After each clarity probe run, update `coverage_record` following Step 4b — number each clarity-probe iteration continuing from the Phase 4 count (e.g. if Phase 4 ran 3 iterations, label the first clarity-probe run iteration 4) — if the clarity-probe agent exercised a branch not yet tested, record the iteration number and an evidence citation (transcript filename + line number); first-test iteration remains canonical and must not be overwritten.
 
 ### Phase 7: Write design doc
 
@@ -405,31 +405,31 @@ Content:
 - **Test prompts used** — all prompts derived or loaded in Phase 2, with rationale for each
 - **Coverage table** — render directly from the `coverage_record` maintained across the loop. Do NOT re-derive from iteration prose. The table must have exactly these columns:
 
-  | Branch | Iteration tested | Evidence |
-  |--------|-----------------|----------|
-  | (branch label from Phase 2) | (iteration number, or `—` if untested) | (transcript filename + line number, or `—`) |
+ | Branch | Iteration tested | Evidence |
+ |--------|-----------------|----------|
+ | (branch label from Phase 2) | (iteration number, or `—` if untested) | (transcript filename + line number, or `—`) |
 
-  Every branch from Phase 2's enumeration must appear as a row. Untested branches are marked `—` in both the iteration-tested and evidence columns. A reviewer can verify completeness by counting rows against the Phase 2 enumeration count.
+ Every branch from Phase 2's enumeration must appear as a row. Untested branches are marked `—` in both the iteration-tested and evidence columns. A reviewer can verify completeness by counting rows against the Phase 2 enumeration count.
 
 - **Per-iteration timing table** — render from `timing_records` collected during the loop. Include one row per iteration (and one for the naive baseline if `--baseline` was used on iteration 1). Columns:
 
-  | Iteration | Agent | total_tokens | duration_ms |
-  |-----------|-------|-------------|-------------|
-  | 1 | skilled | (value or `—`) | (value or `—`) |
-  | 1 | naive (baseline) | (value or `—`) | (value or `—`) |
-  | 2 | skilled | ... | ... |
-  | ... | | | |
+ | Iteration | Agent | total_tokens | duration_ms |
+ |-----------|-------|-------------|-------------|
+ | 1 | skilled | (value or `—`) | (value or `—`) |
+ | 1 | naive (baseline) | (value or `—`) | (value or `—`) |
+ | 2 | skilled | ... | ... |
+ | ... | | | |
 
-  This table is the authoritative timing record for the session. No separate JSON file is written.
+ This table is the authoritative timing record for the session. No separate JSON file is written.
 
 - **Per-iteration findings** — for each iteration: compliance issues, quality gaps, key transcript evidence, proposals accepted/rejected
 - **Per-prompt assertion grading rollup** — if assertions were used for any prompt during the session, include a summary table. Columns:
 
-  | Prompt id | Iteration | Assertion | Result | Evidence (excerpt) |
-  |-----------|-----------|-----------|--------|-------------------|
-  | (prompt id) | (iter) | (assertion text) | PASS / FAIL | (quoted evidence) |
+ | Prompt id | Iteration | Assertion | Result | Evidence (excerpt) |
+ |-----------|-----------|-----------|--------|-------------------|
+ | (prompt id) | (iter) | (assertion text) | PASS / FAIL | (quoted evidence) |
 
-  Only include this section if at least one prompt had assertions. If no assertions were used, omit this section entirely.
+ Only include this section if at least one prompt had assertions. If no assertions were used, omit this section entirely.
 
 - **Trivially-folded changes** — full log of changes applied between iterations without approval
 - **Improvement plan** — prioritized list of accepted proposals, each with what/why/where/generalization assessment. Group proposals by category, with **Description-trigger proposals** as a distinct labeled subsection (separate from body-text edits) so the user sees frontmatter `description:` changes as their own class.

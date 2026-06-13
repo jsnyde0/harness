@@ -2,11 +2,11 @@
 
 ## What this recipe is
 
-`/harness compose` is the canonical surface that bead-authoring primitives (`/brainstorm` at convergence, `/decompose` at child authoring) invoke per ADR-005 D7 to produce a `## Harness target` section for a specific bead scope. **Single source of truth** — harness principles, fast/slow hierarchies, and the build/connect/configure/reduce taxonomy live here, never inlined into the caller.
+`/harness compose` is the canonical surface that bead-authoring primitives (`/brainstorm` at convergence, `/decompose` at child authoring) invoke to produce a `## Harness target` section for a specific bead scope. **Single source of truth** — harness principles, fast/slow hierarchies, and the build/connect/configure/reduce taxonomy live here, never inlined into the caller.
 
 The output is a four-predicate block (Signal / Expected green / Rationale / Invalidation) the **caller** then persists to the bead's `--design`. `/harness compose` returns the block; it does not write to bead substrate.
 
-**Provenance note (2026-06-01).** ADR-005 D7's Rationale references a soldier-proof pass on `/harness compose` from 2026-04-23 covering all HOW modes and both inventory branches. That coverage applies to the *principles* encoded across harness/SKILL.md (methodology home) and `recipes/quick.md` (the parent skill's review criteria, fast/slow hierarchy, and inventory-first discipline). The **four-predicate output contract** (Signal / Expected green / Rationale / Invalidation) is sourced from ADR-012 D3 — it was binding before this file existed, but its packaging as a callable-subcommand output contract is new in this 2026-06-01 re-exposure and was NOT within the 2026-04-23 soldier-proof scope. A soldier-proof pass on this specific recipe shape (subcommand-contract framing + the inputs/return-value shape + caller-persists discipline) is named as future work. Until then: the four-predicate structure is binding via ADR-012 D3, the HOW-mode and inventory principles are binding via SKILL.md/quick.md, but the subcommand-call ergonomics are untested under pressure — surface friction back as drift signals.
+**Provenance note (2026-06-01).** The bead-authoring subcommand mandate's Rationale references a soldier-proof pass on `/harness compose` from 2026-04-23 covering all HOW modes and both inventory branches. That coverage applies to the *principles* encoded across harness/SKILL.md (methodology home) and `recipes/quick.md` (the parent skill's review criteria, fast/slow hierarchy, and inventory-first discipline). The **four-predicate output contract** (Signal / Expected green / Rationale / Invalidation) is a binding structural predicate — it was binding before this file existed, but its packaging as a callable-subcommand output contract is new in this 2026-06-01 re-exposure and was NOT within the 2026-04-23 soldier-proof scope. A soldier-proof pass on this specific recipe shape (subcommand-contract framing + the inputs/return-value shape + caller-persists discipline) is named as future work. Until then: the four-predicate structure is binding, the HOW-mode and inventory principles are binding via SKILL.md/quick.md, but the subcommand-call ergonomics are untested under pressure — surface friction back as drift signals.
 
 ## Inputs the caller passes
 
@@ -24,7 +24,7 @@ Same inventory-first discipline as `/harness`: read `.claude/harness.md` if pres
 
 What observable would fail if this bead's intended outcome is NOT met, and pass when it is? Alignment is load-bearing per the harness review criteria — a test suite that passes even when the integration is wired wrong is misaligned; a linter check on a bead whose intent is behavioral change is misaligned.
 
-**The Signal is a partial proxy, not proof.** It's the *hillclimbing gradient* an implementer iterates against — the fast, executable stand-in for the bead's intent. It is necessary, not sufficient: the bead's acceptance usually carries prose ("the error is actually helpful," "the abstraction doesn't leak") that no Signal can capture. That prose remainder doesn't disappear because it's unautomatable — done is `harness green AND acceptance met`, a conjunction (ADR-006 D4). Author the Signal as the best available proxy, and name what it leaves uncovered (in the Rationale) so the reviewer knows what to judge by hand. Do not frame the Signal as if green meant done.
+**The Signal is a partial proxy, not proof.** It's the *hillclimbing gradient* an implementer iterates against — the fast, executable stand-in for the bead's intent. It is necessary, not sufficient: the bead's acceptance usually carries prose ("the error is actually helpful," "the abstraction doesn't leak") that no Signal can capture. That prose remainder doesn't disappear because it's unautomatable — done is `harness green AND acceptance met`, a conjunction. Author the Signal as the best available proxy, and name what it leaves uncovered (in the Rationale) so the reviewer knows what to judge by hand. Do not frame the Signal as if green meant done.
 
 For `decompose-child` mode: the child's signal must address at least one dimension of the parent's signal. Note which parent-signal dimension this child covers — the caller's conjunction-coverage probe (in `/decompose`) compares the union of children's signals to the parent's signal, and that probe relies on each child's signal being scoped concretely enough to compare.
 
@@ -33,7 +33,7 @@ For `decompose-child` mode: the child's signal must address at least one dimensi
 Fastest-deterministic signal that captures the bead's intent. The hierarchy from the parent skill applies:
 
 ```
-FAST / DETERMINISTIC                              SLOW / SEMANTIC
+FAST / DETERMINISTIC SLOW / SEMANTIC
 ───────────────────────────────────────────────────────────────────→
 compile → typecheck → lint → unit test → integration → E2E → LLM judge → human
 ```
@@ -50,7 +50,7 @@ Return exactly this shape (markdown), populated:
 **Signal:** <concrete observable — name the command, file, region, or runtime check>
 **Expected green:** <what the signal looks like when this bead is done — binary, observable>
 **Rationale:** <why this altitude best captures the design intent; cite `.claude/harness.md` entry if used; for decompose-child, name which parent-signal dimension this covers; **name what this Signal does NOT cover** — the prose acceptance it can't reach — so the reviewer knows what to verify by hand (per harness-designer's "what this harness will NOT catch")>
-**Invalidation:** <qualitative cue an agent or human applies in the moment — "watch for X surfacing in practice; if it does, tighten Y" shape (per ADR-008 D8 FIRM signal-shaped default). Numeric thresholds permitted ONLY when paired with named active instrumentation (a scheduled job, hook, `bd` query, or harness check) that actually collects the data AND an agent or human routinely reads the collected data — unbacked numeric thresholds are falsifiability theater per D8.>
+**Invalidation:** <qualitative cue an agent or human applies in the moment — "watch for X surfacing in practice; if it does, tighten Y" shape. Signal-shaped invalidation is the hard rule: no numeric thresholds unless paired with named active instrumentation (a scheduled job, hook, `bd` query, or harness check) that actually collects the data AND an agent or human routinely reads the collected data — unbacked numeric thresholds are falsifiability theater.>
 ```
 
 Trivial work may use a named-skip-with-rationale that still occupies all four fields (e.g. Signal: `none — mechanical rename`, Rationale: `the diff IS the verification`). Named skip ≠ empty field.
@@ -83,7 +83,4 @@ The block this recipe returns is graded by the harness review criteria in the pa
 
 ## Canonical refs
 
-- ADR-005 D7 (FLEXIBLE, revised 2026-05-22) — bead-authoring primitives invoke `/harness compose`; conjunction-coverage clause on `/decompose` children.
-- ADR-012 D3 — four-predicate harness target structure; children-jointly-cover-parent rule (line 106-107).
-- ADR-008 D8 (FIRM) — signal-shaped invalidation; no numeric thresholds.
 - Parent SKILL.md "Harness target review criteria" — the six-point grading the returned block will face.

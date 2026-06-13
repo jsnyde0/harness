@@ -10,7 +10,7 @@ Defaults around scout / adversarial review / dispatch are cost without benefit a
 
 1. Read the bead (or just the user's prompt if no bead exists yet).
 2. Drive the change directly.
-3. Run the harness (`.claude/harness.md` signal, or just the test command the repo uses).
+3. Run the harness (the harness signal, or just the test command the repo uses).
 4. Commit + close bead (or just commit, if no bead).
 
 ## Watch-outs

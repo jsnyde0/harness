@@ -33,9 +33,9 @@ If a subagent's brief requires it to make a load-bearing decision the orchestrat
 
 The whole point of dispatch is fresh context. Don't undermine it:
 
-- **Don't pass parent transcripts.** Brief with the bead ID + state references + what to verify. Subagent reads its own context. (ADR-009 D3.)
+- **Don't pass parent transcripts.** Brief with the bead ID + state references + what to verify. Subagent reads its own context.
 - **Don't summarize your own findings into the brief.** Summaries anchor. Hand the artifact path and the contract; let it draw its own conclusions.
-- **Don't reuse a subagent across retries.** Each retry is a fresh `Task()` dispatch. Anchored re-reviewers find the same findings, not new ones. (ADR-007 D3.)
+- **Don't reuse a subagent across retries.** Each retry is a fresh `Task` dispatch. Anchored re-reviewers find the same findings, not new ones.
 
 ## Parallel dispatch
 
@@ -48,7 +48,7 @@ Parallel-dispatch is fine — encouraged — when independent work isolates clea
 
 When in doubt, serial. The disjointness check sits in the orchestrator, not the subagent.
 
-**Override of `superpowers:subagent-driven-development`.** That skill states "Never dispatch multiple implementation subagents in parallel (conflicts)" as a blanket prohibition. We override per ADR-009 D2: parallel is OK iff file-claims are disjoint. The underlying concern (file conflicts) is correct; the prohibition is over-broad. The same skill mandates TodoWrite — we use `bd` per CLAUDE.md; ignore that directive too.
+**Override of `superpowers:subagent-driven-development`.** That skill states "Never dispatch multiple implementation subagents in parallel (conflicts)" as a blanket prohibition. We override that rule: parallel is OK iff file-claims are disjoint. The underlying concern (file conflicts) is correct; the prohibition is over-broad. The same skill mandates TodoWrite — we use `bd` per CLAUDE.md; ignore that directive too.
 
 ## Subagent index
 
@@ -61,14 +61,11 @@ When in doubt, serial. The disjointness check sits in the orchestrator, not the 
 | `adversarial-reviewer` | Fresh-context review of own work; PASS/REVISE/REJECT | default-on for own work |
 | `harness-designer` | Target spec for big trees or churning leaves | fresh-context harness `/` |
 | `plan-writer` | Detailed agent-executable plans | v2-era; rarely needed under substrate-thick |
-| `design-scout` / `-refiner` / `-critic` | beadify-v2 Phase A/B/C | reference-only per ADR-012 D5 |
+| `design-scout` / `-refiner` / `-critic` | beadify-v2 Phase A/B/C | reference-only |
 
 All execute-only. None compose other primitives. The first six are the substrate-thick working set; the rest are reference compositions.
 
 ## Canonical refs
 
-- [ADR-007](../../docs/decisions/ADR-007-primitive-loop.md) D3 — fresh `Task()` per reviewer; no reuse.
-- [ADR-009](../../docs/decisions/ADR-009-loop-composability.md) D2/D3 — parent dispatch (serial default, parallel-disjoint permitted); strip parent context.
-- [ADR-012](../../docs/decisions/ADR-012-substrate-thick-process-thin.md) D3 — primitives + default-on adversarial review for own work.
 - agents/ directory (methodology home) — agent definitions (the index above is a navigation aid; agent files are authoritative).
 - send-it/SKILL.md (methodology home) — orchestrator that dispatches these.

@@ -11,10 +11,10 @@ A new feature surfaces a load-bearing decision not yet captured anywhere canonic
 3. **`/scout-adrs`** post-write — sanity-check what else this newly-canonical decision composes with.
 4. **Author the bead** carrying the implementation, with `## canonical_refs` pointing at the new ADR.
 5. **`/decompose`** if the bead is multi-step — produces children with `## File-claim map`.
-6. **Dispatch `adversarial-reviewer`** on the decomposition tree (default-on per ADR-012 D3).
+6. **Dispatch `adversarial-reviewer`** on the decomposition tree (default-on).
 7. **Walk children** — see `walk-children` notes inline in `/send-it` (serial unless claims disjoint).
-8. **Parent re-verify** — re-run the parent's `--acceptance` + ADR invalidation checks (ADR-009 D5).
-9. **`/compound`** at epic close (default-on per ADR-013 D6) — surfaces Record / Promote / Retire candidates.
+8. **Parent re-verify** — re-run the parent's `--acceptance` + ADR invalidation checks.
+9. **`/compound`** at epic close (default-on) — surfaces Record / Promote / Retire candidates.
 
 ## Watch-outs
 

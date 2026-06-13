@@ -239,6 +239,7 @@ CLASS_DESCRIPTIONS: dict[str, str] = {
     "C4": "private bead-namespace ID from markers config (configured prefix-<id>)",
     "C5": "private project noun or source path from markers config",
     "C6": "absolute macOS home path (/Users/<username>/...)",
+    "BOUNDARY": "docs/decisions/ boundary violation (ADR-*.md or INDEX.md must not be published)",
 }
 
 
@@ -282,6 +283,54 @@ SCAN_SELF_EXCLUSIONS = {
     "scripts/test_oneway_check.py",
     "scripts/oneway-markers.example.toml",
 }
+
+
+# ---------------------------------------------------------------------------
+# Boundary-presence guard: docs/decisions/ must remain EMPTY by design
+# ---------------------------------------------------------------------------
+
+# docs/decisions/ is empty by design — all methodology/mechanism ADRs are private
+# and must never publish. Any file matching these patterns is a leak.
+_DOCS_DECISIONS_BOUNDARY_PATTERNS = ("ADR-*.md", "INDEX.md")
+
+
+def check_docs_decisions_boundary(repo_root: Path) -> list["Finding"]:
+    """
+    Boundary-presence guard: fail if docs/decisions/ contains any ADR or INDEX file.
+
+    The docs/decisions/ directory is EMPTY BY DESIGN — all methodology and
+    mechanism ADRs are private and must never enter the public harness repo.
+    This guard catches silent re-entry of private ADR files.
+
+    Scans the filesystem (not git ls-files) for files matching:
+      - ADR-*.md  (any numbered ADR file)
+      - INDEX.md  (the ADR index)
+
+    Returns a list of Finding objects (marker_class="BOUNDARY") for each
+    offending file found. Empty list = clean.
+    """
+    decisions_dir = repo_root / "docs" / "decisions"
+    findings: list[Finding] = []
+
+    if not decisions_dir.exists():
+        return findings
+
+    import fnmatch
+    for candidate in sorted(decisions_dir.iterdir()):
+        if not candidate.is_file():
+            continue
+        name = candidate.name
+        matched = any(fnmatch.fnmatch(name, pat) for pat in _DOCS_DECISIONS_BOUNDARY_PATTERNS)
+        if matched:
+            findings.append(Finding(
+                file_path=candidate,
+                line_number=0,
+                marker_class="BOUNDARY",
+                matched_text=str(candidate.relative_to(repo_root)),
+                line_content="",
+            ))
+
+    return findings
 
 
 def load_manifest(manifest_path: Path) -> dict:
@@ -539,6 +588,14 @@ def run_check(
         if verbose and findings:
             for f in findings:
                 print(f"  LEAK: {f.format()}")
+
+    # Boundary-presence guard: runs in all-tracked (production) mode
+    if use_all_tracked:
+        boundary_findings = check_docs_decisions_boundary(repo_root)
+        all_findings.extend(boundary_findings)
+        if verbose and boundary_findings:
+            for f in boundary_findings:
+                print(f"  BOUNDARY: {f.format()}")
 
     if verbose:
         print()

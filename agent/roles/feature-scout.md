@@ -79,7 +79,10 @@ Try in order, stop when you have what you need:
 1. **`WebFetch`** — allowlisted domains; fast, cached (~15 min), small-model summary. Try first.
 2. **`/web-fetch` skill via Bash** — for non-allowlisted domains, verbatim content (no paraphrase), large pages with pagination, or when WebFetch returns shell HTML / hits a permission denial:
    ```bash
+   # on Claude Code:
    uv run --directory $HOME/.claude/skills/web-fetch python fetch_url.py <url> [--provider auto|firecrawl] [--max-chars N] [--offset N]
+   # on pi:
+   uv run --directory $HOME/.pi/agent/skills/web-fetch python fetch_url.py <url> [--provider auto|firecrawl] [--max-chars N] [--offset N]
    ```
    Default `auto` waterfalls Jina → Firecrawl → direct. Escalate to `--provider firecrawl --wait-for 2000` if the payload is thin/JS-shell. Add `--format html` for attribute-only content (aria-labels on icon buttons).
 3. **`browser-automation`** — only when both above return shell HTML, captcha, or hard 403 across multiple priority pages. Most "static-but-not-allowlisted" cases — small platforms, regional sites, niche docs — resolve at tier 2; do not jump to browser for them.
