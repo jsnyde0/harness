@@ -1,0 +1,8 @@
+# gitleaks config for the public harness repo.
+# Extends the default ruleset; allowlists known-benign intentional markers.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Harness roundtrip-test sentinel (ping-dotpi/pong-… handshake marker in roundtrip.test.mjs). Intentional test infrastructure, declared as a labeled SENTINEL_TOKEN — not a credential."
+regexes = ['''DOTPI-INSTR-RT-[A-Z0-9]+''']
