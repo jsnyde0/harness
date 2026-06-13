@@ -12,6 +12,28 @@ jobs:
 
       - uses: astral-sh/setup-uv@v5
 
+      - name: Materialise real leak markers from secret
+        # Writes oneway-markers.local.toml from the ONEWAY_MARKERS_LOCAL Actions secret
+        # so that oneway-check.py auto-discovers real private tokens instead of falling
+        # back to the example placeholders (which only cover structural classes C2/C6).
+        #
+        # Guard: if the secret is absent or empty (e.g. a fork PR where secrets aren't
+        # available), this step is a no-op and the job continues against the example
+        # fallback — structural-only coverage is preserved, real-token coverage requires
+        # the secret.
+        #
+        # Owner setup: from the harness repo root, run once:
+        #   gh secret set ONEWAY_MARKERS_LOCAL < scripts/oneway-markers.local.toml
+        env:
+          ONEWAY_MARKERS_LOCAL: ${{ secrets.ONEWAY_MARKERS_LOCAL }}
+        run: |
+          if [ -n "$ONEWAY_MARKERS_LOCAL" ]; then
+            printf '%s' "$ONEWAY_MARKERS_LOCAL" > scripts/oneway-markers.local.toml
+            echo "Real markers materialised — full token coverage (C1–C5) active."
+          else
+            echo "ONEWAY_MARKERS_LOCAL secret absent or empty — running on example placeholders (structural-only: C2, C6)."
+          fi
+
       - name: Scan core assets for private markers
         run: uv run scripts/oneway-check.py
 
